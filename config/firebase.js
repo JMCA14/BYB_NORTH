@@ -10,14 +10,15 @@ import {
     signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// Config del proyecto NUEVO (byb-north-2).
 const firebaseConfig = {
-    apiKey: "AIzaSyCvHPNgceh6YlD1DJKPpMazeOuaUX2K_lE",
-    authDomain: "byb-norte-82e1a.firebaseapp.com",
-    databaseURL: "https://byb-norte-82e1a-default-rtdb.firebaseio.com",
-    projectId: "byb-norte-82e1a",
-    storageBucket: "byb-norte-82e1a.firebasestorage.app",
-    messagingSenderId: "192380195306",
-    appId: "1:192380195306:web:e5caf122d22a13ba812293"
+    apiKey: "AIzaSyBwmytxCHMnjHoO18HSDa845D7uwPwVoOo",
+    authDomain: "byb-north-2.firebaseapp.com",
+    databaseURL: "https://byb-north-2-default-rtdb.firebaseio.com",
+    projectId: "byb-north-2",
+    storageBucket: "byb-north-2.firebasestorage.app",
+    messagingSenderId: "685180004734",
+    appId: "1:685180004734:web:252098fdb593aee813eb2f"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -26,7 +27,6 @@ const storage = getStorage(app);
 const auth = getAuth(app);
 
 // Mantiene la sesión de Firebase Auth entre recargas del navegador.
-// Esto reemplaza el localStorage manual que existía antes.
 setPersistence(auth, browserLocalPersistence).catch(e => console.warn('Persistence error:', e));
 
 // Nodo de trabajo (OTs)
@@ -44,7 +44,7 @@ const chatVisRef = ref(db, 'chat_byb/vistos');
 
 // Dominio ficticio usado para transformar "nombre.apellido" en un
 // email válido para Firebase Auth. No necesita existir de verdad.
-const EMAIL_DOMAIN = 'byb-norte-82e1a.app';
+const EMAIL_DOMAIN = 'byb-north-2.app';
 
 export {
     db, storage, dbRef, perfilesRef,
