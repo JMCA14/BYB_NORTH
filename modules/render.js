@@ -105,7 +105,6 @@ window.render = () => {
             return `<tr>
                 <td>${u.nombre}</td>
                 <td><code>${u.usuario}</code></td>
-                <td><code>${u.password||'—'}</code></td>
                 <td>${roles[u.rol]||u.rol}</td>
                 <td>${areasGenLabel}</td>
                 <td style="font-size:0.78em;color:var(--text2);">${asigSummary}</td>
@@ -119,10 +118,12 @@ window.render = () => {
         v.innerHTML = `
         <div class="card">
             <h2>👥 Gestión de Usuarios</h2>
-            <button class="btn-primary btn-sm" style="margin-bottom:16px;" onclick="window.nuevoUsuarioForm()">➕ Nuevo Usuario</button>
+            <div style="background:#fff4e5;border:1px solid #ffc178;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:0.88em;color:#7a4a00;">
+                ℹ️ Para crear un usuario nuevo: primero créalo en <strong>Firebase Console → Authentication</strong>, luego agrégalo aquí con "✏️ Editar" usando su UID. La contraseña ya no se gestiona en esta app.
+            </div>
             <div style="overflow-x:auto;">
             <table>
-                <thead><tr><th>Nombre</th><th>Usuario</th><th>Contraseña</th><th>Rol</th><th>🏭 Área General</th><th>OTs Específicas</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>🏭 Área General</th><th>OTs Específicas</th><th>Estado</th><th>Acciones</th></tr></thead>
                 <tbody>${rows}</tbody>
             </table></div>
             <div id="formUsuario" style="display:none;margin-top:20px;background:#f8f9fa;border:1px solid var(--border);border-radius:8px;padding:18px;">
@@ -131,7 +132,6 @@ window.render = () => {
                 <div class="med-grid">
                     <div class="med-campo"><label>Nombre completo</label><input id="fuNombre" placeholder="Ej: Juan Pérez"></div>
                     <div class="med-campo"><label>Usuario (sin espacios)</label><input id="fuUsuario" placeholder="Ej: jperez"></div>
-                    <div class="med-campo"><label>Contraseña</label><input id="fuPass" type="password" placeholder="Contraseña"></div>
                     <div class="med-campo"><label>Rol</label>
                         <select id="fuRol" onchange="window.toggleAsignaciones()">
                             <option value="encargado">🔧 Encargado</option>
@@ -711,7 +711,6 @@ window.nuevoUsuarioForm = () => {
     document.getElementById('fuIdx').value = '-1';
     document.getElementById('fuNombre').value = '';
     document.getElementById('fuUsuario').value = '';
-    document.getElementById('fuPass').value = '';
     document.getElementById('fuRol').value = 'encargado';
     document.getElementById('formUsuError').textContent = '';
     if (document.getElementById('buscadorOT')) document.getElementById('buscadorOT').value = '';
