@@ -1,16 +1,20 @@
-import { set, onValue, dbRef, usersRef } from "../config/firebase.js";
+import { set, onValue, dbRef, perfilesRef } from "../config/firebase.js";
 
+// Guarda los perfiles (nombre, rol, asignaciones) keyeados por UID de
+// Firebase Auth. IMPORTANTE: esta función NUNCA debe escribir el campo
+// "password" — las contraseñas viven solo en Firebase Authentication,
+// no en Realtime Database. Ver instrucciones para crear/editar
+// contraseñas desde la consola de Firebase.
 window.guardarUsuarios = () => {
     const obj = {};
-    // Firebase no permite '.' en claves → reemplazamos por '_' solo en la clave
     window.usuarios.forEach(u => {
-        if(u && u.usuario) {
-            const safeKey = u.usuario.replace(/\./g, '_');
-            obj[safeKey] = u;
+        if (u && u.uid) {
+            const { password, ...perfilSinPassword } = u; // por si quedara algo cacheado, lo descartamos
+            obj[u.uid] = perfilSinPassword;
         }
     });
-    console.log('💾 Guardando usuarios en Firebase:', Object.keys(obj));
-    return set(usersRef, obj);
+    console.log('💾 Guardando perfiles en Firebase:', Object.keys(obj));
+    return set(perfilesRef, obj);
 };
 window.vistaActual = "dashboard";
 window.filtroBusqueda = "";
@@ -54,7 +58,9 @@ window.editarUsuario = (idx) => {
     document.getElementById('fuIdx').value = idx;
     document.getElementById('fuNombre').value = u.nombre || '';
     document.getElementById('fuUsuario').value = u.usuario || '';
-    document.getElementById('fuPass').value = u.password || '';
+    // El campo de contraseña ya no se precarga ni se guarda desde aquí:
+    // las contraseñas se gestionan en Firebase Authentication (consola).
+    if (document.getElementById('fuPass')) document.getElementById('fuPass').value = '';
     document.getElementById('fuRol').value = u.rol || 'encargado';
     document.getElementById('formUsuError').textContent = '';
     if (document.getElementById('buscadorOT')) document.getElementById('buscadorOT').value = '';
@@ -82,11 +88,18 @@ window.guardarUsuarioForm = () => {
     const idx = parseInt(document.getElementById('fuIdx').value);
     const nombre = document.getElementById('fuNombre').value.trim();
     const usuario = document.getElementById('fuUsuario').value.trim().toLowerCase().replace(/\s/g,'');
-    const pass = document.getElementById('fuPass').value;
     const rol = document.getElementById('fuRol').value;
 
-    if (!nombre || !usuario || !pass) { err.textContent = '⚠️ Completa todos los campos.'; return; }
-    if (idx === -1 && window.usuarios.find(u => u.usuario === usuario)) { err.textContent = '⚠️ El nombre de usuario ya existe.'; return; }
+    if (!nombre || !usuario) { err.textContent = '⚠️ Completa todos los campos.'; return; }
+
+    // Crear usuarios nuevos ya NO se hace desde aquí: requiere crear la
+    // cuenta en Firebase Authentication (consola) primero, para obtener
+    // su UID. Ver instrucciones del administrador.
+    if (idx === -1) {
+        err.textContent = '⚠️ Para crear un usuario nuevo, primero créalo en Firebase Authentication (consola) y luego agrégalo aquí con su UID.';
+        return;
+    }
+    if (window.usuarios.find((u, i) => u.usuario === usuario && i !== idx)) { err.textContent = '⚠️ El nombre de usuario ya existe.'; return; }
 
     // Recoger asignaciones {ot, area}
     const asignaciones = [];
@@ -104,12 +117,8 @@ window.guardarUsuarioForm = () => {
         });
     }
 
-    const nuevoU = { nombre, usuario, password: pass, rol, activo: true, asignaciones, areaGeneral };
-    if (idx === -1) {
-        window.usuarios.push(nuevoU);
-    } else {
-        window.usuarios[idx] = { ...window.usuarios[idx], ...nuevoU };
-    }
+    const nuevoU = { nombre, usuario, rol, activo: true, asignaciones, areaGeneral };
+    window.usuarios[idx] = { ...window.usuarios[idx], ...nuevoU }; // conserva el uid existente
     err.textContent = '⏳ Guardando...';
     console.log('📤 Enviando a Firebase:', nuevoU, '| Total usuarios:', window.usuarios.length);
     window.guardarUsuarios().then(() => {
