@@ -250,7 +250,12 @@ window.render = () => {
         ).join('');
 
         let filtrados = window.data.filter(d => d.fecha && d.fecha.slice(0,7) === mesSel);
-        const st2 = (req, hecho) => (req === 'si') ? (hecho ? '<td style="color:var(--success-dark);text-align:center">✔</td>' : '<td style="color:var(--danger);text-align:center">✘</td>') : '<td style="text-align:center;color:var(--text-light)">—</td>';
+        const st2 = (itemKey, jobKey, d2) => {
+            const val = (d2.metro_revision_checks && d2.metro_revision_checks[itemKey] && d2.metro_revision_checks[itemKey].val) || '';
+            if (val !== 'encamisado') return '<td style="text-align:center;color:var(--text-light)">—</td>';
+            const hecho = d2.mec_trab_usuario && d2.mec_trab_usuario[jobKey] && d2.mec_trab_usuario[jobKey].ok;
+            return hecho ? '<td style="color:var(--success-dark);text-align:center">✔</td>' : '<td style="color:var(--danger);text-align:center">✘</td>';
+        };
         const ck2 = (paso, d) => (d.pasos && d.pasos[paso]) ? '<td style="color:var(--success-dark);text-align:center">✔</td>' : '<td style="text-align:center;color:var(--text-light)">—</td>';
         const rod2 = (d2) => {
             const rods2 = d2.rodamientos || [];
@@ -269,9 +274,6 @@ window.render = () => {
         };
         const fmtF = (f) => { if(!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
 
-        const filas = filtrados.map(d =>
-            `<tr><td><b style="color:var(--accent)">${d.ot}</b></td><td>${d.empresa}</td><td style="font-size:0.85em;white-space:nowrap">${fmtF(d.fecha)}</td>${rod2(d)}${st2(d.enc_lc,d.ejec_enc_lc)}${st2(d.enc_ll,d.ejec_enc_ll)}${st2(d.met_lc,d.ejec_met_lc)}${st2(d.met_ll,d.ejec_met_ll)}${ck2('mant_ok',d)}<td><span class="badge badge-blue" style="font-size:0.7em">${d.estado.replace(/_/g,' ').toUpperCase()}</span></td></tr>`
-        ).join('');
 
         // Calcular stats del mes
         const totalMes = filtrados.length;
@@ -297,7 +299,7 @@ window.render = () => {
                 <td style="font-size:0.85em;white-space:nowrap">${fmtF(d.fecha)}</td>
                 <td>${window.barraAvance(pct2)}</td>
                 ${rod2(d)}
-                ${st2(d.enc_lc,d.ejec_enc_lc)}${st2(d.enc_ll,d.ejec_enc_ll)}
+                ${st2('contratapa_lc','encam_lc',d)}${st2('contratapa_ll','encam_ll',d)}
                 ${ck2('mant_ok',d)}
                 <td><span class="badge badge-blue" style="font-size:0.7em">${d.estado.replace(/_/g,' ').toUpperCase()}</span></td>
             </tr>`;
@@ -342,7 +344,7 @@ window.render = () => {
 
             <div style="overflow-x:auto">
             <table class="tab-tec" style="font-size:0.83em;">
-                <thead><tr><th>OT</th><th>Empresa</th><th>Fecha</th><th style="min-width:130px">Avance</th><th>Rodamientos</th><th>E.LC</th><th>E.LL</th><th>Mant</th><th>Estado</th></tr></thead>
+                <thead><tr><th>OT</th><th>Empresa</th><th>Fecha</th><th style="min-width:130px">Avance</th><th>Rodamientos</th><th>Encam. LC</th><th>Encam. LL</th><th>Mant</th><th>Estado</th></tr></thead>
                 <tbody>${filasNuevas || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2);">Sin OTs para este mes</td></tr>'}</tbody>
             </table></div>
         </div>`;
