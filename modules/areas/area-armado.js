@@ -31,14 +31,13 @@ const METRO_ESTADOS = {
 
 const _prefijoMetro = (sec) => 'metro_' + sec; // 'metro_aloj_lc', 'metro_asen_lc', 'metro_eje_lc', ...
 
-// Guardar estado de cada medida de la planilla
-window.guardarMetroEstado = (i, sec, dm, valor) => {
+// Guardar estado (Conclusión) de una sección de la planilla
+window.guardarMetroEstado = (i, sec, valor) => {
     const d = window.data[i];
     if (!d) return;
     if (!d.metro_state) d.metro_state = {};
-    if (!d.metro_state[sec]) d.metro_state[sec] = {};
-    if (!valor) delete d.metro_state[sec][dm];
-    else d.metro_state[sec][dm] = valor;
+    if (!valor) delete d.metro_state[sec];
+    else d.metro_state[sec] = valor;
     window.save();
 };
 
@@ -53,34 +52,32 @@ window.guardarMetroSalidaListo = (i, sec, checked) => {
     window.save();
 };
 
-// ── Tabla de una sección (INGRESO): parámetro / valor / ajuste / estado ──
+// ── Tabla de una sección (INGRESO): parámetro / valor / ajuste / Conclusión-Estado ──
 const _tablaMetroIngreso = (i, d, sec) => {
     const pref = _prefijoMetro(sec.key);
     const opts = METRO_ESTADOS[sec.tipo] || METRO_ESTADOS.tapa;
-    const estados = (d.metro_state && d.metro_state[sec.key]) || {};
+    const est = (d.metro_state || {})[sec.key] || '';
     const filas = window.METRO_DIAMS.map(dm => {
         const k  = pref + '_ing_d' + dm.replace('-','');
         const ka = k + '_aj';
         const v  = d[k] || '';
         const va = d[ka] || '';
-        const est = estados[dm] || '';
-        const radios = opts.map(([val, emoji, lbl, col]) =>
-            `<label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:0.66em;font-weight:700;color:${col};white-space:nowrap;padding:1px 0;">
-                <input type="radio" name="mest_${i}_${sec.key}_${dm}" value="${val}" ${est===val?'checked':''}
-                    onchange="window.guardarMetroEstado(${i},'${sec.key}','${dm}','${val}')"
-                    style="accent-color:${col};width:11px;height:11px;margin:0;">
-                <span>${emoji} ${lbl}</span>
-            </label>`).join('');
         return `<tr style="border-bottom:1px solid #dde1e7;">
             <td style="padding:2px 6px;font-size:0.78em;color:#2c3e50;font-weight:600;white-space:nowrap;">Diámetro ${dm}</td>
             <td style="padding:2px 3px;"><input type="text" style="width:62px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.78em;box-sizing:border-box;" value="${v}" onchange="window.data[${i}]['${k}']=this.value;window.save()"></td>
             <td style="padding:2px 3px;"><input type="text" style="width:42px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.78em;box-sizing:border-box;" placeholder="Ej:J6" value="${va}" onchange="window.data[${i}]['${ka}']=this.value;window.save()"></td>
-            <td style="padding:2px 4px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 6px;">${radios}</div></td>
         </tr>`;
     }).join('');
     const tolMin = d[pref + '_ing_tol_min'] || '';
     const tolMax = d[pref + '_ing_tol_max'] || '';
     const conc   = d[pref + '_ing_conc'] || '';
+    const radios = opts.map(([val, emoji, lbl, col]) =>
+        `<label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:0.66em;font-weight:700;color:${col};white-space:nowrap;padding:1px 0;">
+            <input type="radio" name="mest_${i}_${sec.key}" value="${val}" ${est===val?'checked':''}
+                onchange="window.guardarMetroEstado(${i},'${sec.key}','${val}')"
+                style="accent-color:${col};width:11px;height:11px;margin:0;">
+            <span>${emoji} ${lbl}</span>
+        </label>`).join('');
     return `<div style="background:#fff;border:1px solid #c0d0e8;border-radius:6px;overflow:hidden;margin-bottom:8px;">
         <div style="background:#004F88;color:white;padding:5px 10px;font-size:0.75em;font-weight:700;">${sec.titulo}</div>
         <table style="width:100%;border-collapse:collapse;">
@@ -88,23 +85,25 @@ const _tablaMetroIngreso = (i, d, sec) => {
                 <th style="padding:3px 6px;font-size:0.68em;text-align:left;color:#333;">Parámetro</th>
                 <th style="padding:3px 6px;font-size:0.68em;text-align:left;color:#333;">Valor (mm)</th>
                 <th style="padding:3px 6px;font-size:0.68em;text-align:left;color:#333;">Ajuste</th>
-                <th style="padding:3px 6px;font-size:0.68em;text-align:left;color:#333;">Estado</th>
             </tr>
             ${filas}
             <tr style="background:#eef2f8;">
                 <td style="padding:2px 6px;font-size:0.7em;font-weight:700;color:#333;">Tol. ajuste (min/max)</td>
                 <td style="padding:2px 3px;"><input type="text" style="width:40px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.75em;box-sizing:border-box;" title="Tol. mín" value="${tolMin}" onchange="window.data[${i}]['${pref}_ing_tol_min']=this.value;window.save()"></td>
                 <td style="padding:2px 3px;"><input type="text" style="width:40px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.75em;box-sizing:border-box;" title="Tol. máx" value="${tolMax}" onchange="window.data[${i}]['${pref}_ing_tol_max']=this.value;window.save()"></td>
-                <td style="padding:2px 4px;font-size:0.62em;color:#888;">− / +</td>
             </tr>
             <tr style="background:#f7f9fc;">
-                <td style="padding:2px 6px;font-size:0.7em;font-weight:700;color:#333;">Conclusión</td>
-                <td colspan="3" style="padding:2px 4px;">
-                    <select style="padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.74em;" onchange="window.data[${i}]['${pref}_ing_conc']=this.value;window.save()">
-                        <option value="">—</option>
-                        <option value="dentro" ${conc==='dentro'?'selected':''}>Dentro de tolerancia</option>
-                        <option value="fuera" ${conc==='fuera'?'selected':''}>Fuera de tolerancia</option>
-                    </select>
+                <td style="padding:2px 6px;font-size:0.7em;font-weight:700;color:#333;">Conclusión / Estado</td>
+                <td colspan="2" style="padding:2px 4px;">
+                    <div style="display:grid;grid-template-columns:repeat(4,auto);gap:2px 10px;justify-content:start;">${radios}</div>
+                    <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+                        <label style="font-size:0.65em;color:#666;font-weight:600;">Tolerancia:</label>
+                        <select style="padding:1px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.7em;" onchange="window.data[${i}]['${pref}_ing_conc']=this.value;window.save()">
+                            <option value="">—</option>
+                            <option value="dentro" ${conc==='dentro'?'selected':''}>Dentro de tolerancia</option>
+                            <option value="fuera" ${conc==='fuera'?'selected':''}>Fuera de tolerancia</option>
+                        </select>
+                    </div>
                 </td>
             </tr>
         </table>
@@ -114,7 +113,7 @@ const _tablaMetroIngreso = (i, d, sec) => {
 // Planilla de INGRESO completa (6 secciones)
 window._htmlPlanillaMetroIngreso = (i, d) => `
     <div class="det-seccion-titulo" style="margin-top:14px;">📐 Protocolo de Mecánica — Mediciones y Estado</div>
-    <p style="font-size:0.78em;color:#888;margin:4px 0 8px;">Registra las medidas y marca el estado de cada componente. En tapas: <b style="color:#e67e22;">Encamisado</b> o <b style="color:#2980b9;">Rectificado</b>; en ejes: <b style="color:#8e44ad;">Metalado</b> o <b style="color:#2980b9;">Rectificado</b>. Los estados generan automáticamente los trabajos en Ejecución Mecánica.</p>
+    <p style="font-size:0.78em;color:#888;margin:4px 0 8px;">Registra las medidas y marca el <b>estado de cada sección</b> en su fila de Conclusión. En tapas: <b style="color:#e67e22;">Encamisado</b> o <b style="color:#2980b9;">Rectificado</b>; en ejes: <b style="color:#8e44ad;">Metalado</b> o <b style="color:#2980b9;">Rectificado</b>. El estado de cada sección genera automáticamente los trabajos en Ejecución Mecánica.</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
         ${window.METRO_SECCIONES.map(s => _tablaMetroIngreso(i, d, s)).join('')}
     </div>`;
@@ -185,16 +184,26 @@ window.obtenerTrabajosMetro = (d) => {
     const t = [];
     const estados = d.metro_state || {};
     window.METRO_SECCIONES.forEach(sec => {
-        const vals = Object.values(estados[sec.key] || {});
-        if (!vals.length) return;
+        const raw = estados[sec.key];
+        let val = '';
+        if (typeof raw === 'string') val = raw;
+        else if (raw && typeof raw === 'object') { // compatibilidad OTs antiguas (estado por diámetro)
+            const vals = Object.values(raw);
+            if (vals.includes('malo')) val = 'malo';
+            else if (vals.includes('encamisado')) val = 'encamisado';
+            else if (vals.includes('metalado')) val = 'metalado';
+            else if (vals.includes('rectificado')) val = 'rectificado';
+            else if (vals.includes('bueno')) val = 'bueno';
+        }
+        if (!val) return;
         if (sec.tipo === 'tapa') {
-            if (vals.includes('encamisado'))  t.push({ k: 'encam_' + sec.key,     label: '🔧 Encamisado ' + sec.corto });
-            if (vals.includes('rectificado')) t.push({ k: 'rect_' + sec.key,      label: '🗜️ Rectificado ' + sec.corto });
-            if (vals.includes('malo'))        t.push({ k: 'revisar_' + sec.key,   label: '🔍 Revisar ' + sec.corto + ' (elemento malo)' });
+            if (val === 'encamisado')  t.push({ k: 'encam_' + sec.key,     label: '🔧 Encamisado ' + sec.corto });
+            if (val === 'rectificado') t.push({ k: 'rect_' + sec.key,      label: '🗜️ Rectificado ' + sec.corto });
+            if (val === 'malo')        t.push({ k: 'revisar_' + sec.key,   label: '🔍 Revisar ' + sec.corto + ' (elemento malo)' });
         } else {
-            if (vals.includes('metalado'))    t.push({ k: 'metal_' + sec.key,     label: '🖌️ Metalado ' + sec.corto });
-            if (vals.includes('rectificado')) t.push({ k: 'rect_' + sec.key,      label: '🗜️ Rectificado ' + sec.corto });
-            if (vals.includes('malo'))        t.push({ k: 'revisar_' + sec.key,   label: '🔍 Revisar ' + sec.corto + ' (elemento malo)' });
+            if (val === 'metalado')    t.push({ k: 'metal_' + sec.key,     label: '🖌️ Metalado ' + sec.corto });
+            if (val === 'rectificado') t.push({ k: 'rect_' + sec.key,      label: '🗜️ Rectificado ' + sec.corto });
+            if (val === 'malo')        t.push({ k: 'revisar_' + sec.key,   label: '🔍 Revisar ' + sec.corto + ' (elemento malo)' });
         }
     });
     // Compatibilidad con banderas antiguas (OTs ya existentes)
