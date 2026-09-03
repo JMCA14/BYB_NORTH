@@ -58,17 +58,17 @@ window.getOTsPendientesPorArea = (areaId) => {
                        (d.estado === 'check_salida' && !p.salida_ok) ||
                        (d.estado === 'terminaciones' && !p.term_ok);
             case 'mecanica':
-    return (d.estado === 'ingresos_pendientes' && !p.met_ok) ||
-           (d.estado === 'ejecucion_trabajos' && !p.mec_fin) ||
-           (d.pruebas_rechaza?.areas?.includes('mecanica') && !d.pruebas_rechaza?.listas?.['mecanica']);
+                return (d.estado === 'ingresos_pendientes' && !p.met_ok) ||
+                       (d.estado === 'ejecucion_trabajos' && !p.mec_fin) ||
+                       (d.pruebas_rechaza?.areas?.includes('mecanica') && !d.pruebas_rechaza?.listas?.['mecanica']);
             case 'bobinado':
-    if (d.pruebas_rechaza?.areas?.includes('bobinado') && !d.pruebas_rechaza?.listas?.['bobinado']) return true;
-    return d.estado === 'ejecucion_trabajos' &&
-           d.tipoTrabajo === 'bobinado' && !p.bobinado_fin;
+                if (d.pruebas_rechaza?.areas?.includes('bobinado') && !d.pruebas_rechaza?.listas?.['bobinado']) return true;
+                return d.estado === 'ejecucion_trabajos' &&
+                       d.tipoTrabajo === 'bobinado' && !p.bobinado_fin;
             case 'armado_bal':
-    if (d.pruebas_rechaza?.areas?.includes('armado_bal') && !d.pruebas_rechaza?.listas?.['armado_bal']) return true;
-    return (d.estado === 'ejecucion_trabajos' && !p.armado_ok) ||
-           (d.estado === 'terminaciones' && !p.bal_ok);
+                if (d.pruebas_rechaza?.areas?.includes('armado_bal') && !d.pruebas_rechaza?.listas?.['armado_bal']) return true;
+                return (d.estado === 'ejecucion_trabajos' && !p.armado_ok) ||
+                       (d.estado === 'terminaciones' && !p.bal_ok);
             case 'despacho':
                 return d.estado === 'despacho';
         }
