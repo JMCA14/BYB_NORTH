@@ -1158,11 +1158,18 @@ window.updateFlujo = (i, paso, sig) => {
     if (!window.data[i].responsables) window.data[i].responsables = {};
     window.data[i].responsables[paso] = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
     if (paso === 'med_ok' || paso === 'met_ok') {
+        // Avisar si falta la otra etapa para evitar el "no avanza"
+        if (paso === 'met_ok' && !window.data[i].pasos.med_ok) {
+            alert('✅ Metrología guardada.\n\n⚠️ La OT aún no avanza: faltan las MEDICIONES DE INGRESO.\nVe a la vista 🔬 Control Calidad y pulsa "Guardar e Ingresar".');
+        } else if (paso === 'med_ok' && !window.data[i].pasos.met_ok) {
+            alert('✅ Mediciones guardadas.\n\n⚠️ La OT aún no avanza: falta la METROLOGÍA.\nVe a la vista ⚙️ Mecánica y pulsa "Guardar Metrología".');
+        }
         if (window.data[i].pasos.med_ok && window.data[i].pasos.met_ok) window.data[i].estado = 'detalle_pendiente';
     } else if (sig) {
         window.data[i].estado = sig;
     }
     window.save();
+    window.render();
 };
 
 window.agregarHallazgo = (i) => {
