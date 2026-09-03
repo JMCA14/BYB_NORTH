@@ -29,7 +29,7 @@ const METRO_ESTADOS = {
     ],
 };
 
-const _prefijoMetro = (sec) => 'metro_' + sec; // 'metro_aloj_lc', 'metro_asen_lc', 'metro_eje_lc', ...
+const _prefijoMetro = (sec) => 'metro_' + sec;
 
 // Guardar estado (Conclusión) de una sección de la planilla
 window.guardarMetroEstado = (i, sec, valor) => {
@@ -52,7 +52,10 @@ window.guardarMetroSalidaListo = (i, sec, checked) => {
     window.save();
 };
 
-// ── Tabla de una sección (INGRESO): parámetro / valor / ajuste / Conclusión-Estado ──
+// ═══════════════════════════════════════════════════════════════════
+// TABLA DE INGRESO: Parámetro / Valor (mm) / Ajuste + Conclusión-Estado
+// ═══════════════════════════════════════════════════════════════════
+
 const _tablaMetroIngreso = (i, d, sec) => {
     const pref = _prefijoMetro(sec.key);
     const opts = METRO_ESTADOS[sec.tipo] || METRO_ESTADOS.tapa;
@@ -118,25 +121,36 @@ window._htmlPlanillaMetroIngreso = (i, d) => `
         ${window.METRO_SECCIONES.map(s => _tablaMetroIngreso(i, d, s)).join('')}
     </div>`;
 
-// ── Tabla de una sección (SALIDA): parámetro / valor / ajuste + check realizado ──
+// ═══════════════════════════════════════════════════════════════════
+// TABLA DE SALIDA: Ingreso (solo lectura) + Salida (editable) + Ajuste + Check realizado
+// ═══════════════════════════════════════════════════════════════════
+
 const _tablaMetroSalida = (i, d, sec) => {
     const pref = _prefijoMetro(sec.key);
     const filas = window.METRO_DIAMS.map(dm => {
-        const k  = pref + '_sal_d' + dm.replace('-','');
-        const ka = k + '_aj';
-        const v  = d[k] || '';
-        const va = d[ka] || '';
+        const kiIng  = pref + '_ing_d' + dm.replace('-','');
+        const kiSal  = pref + '_sal_d' + dm.replace('-','');
+        const kiIngAj = pref + '_ing_d' + dm.replace('-','') + '_aj';
+        const kiSalAj = pref + '_sal_d' + dm.replace('-','') + '_aj';
+        const vIng    = d[kiIng]  || '—';
+        const vIngAj  = d[kiIngAj] || '—';
+        const vSal    = d[kiSal]  || '';
+        const vSalAj  = d[kiSalAj] || '';
         return `<tr style="border-bottom:1px solid #dde1e7;">
             <td style="padding:2px 6px;font-size:0.78em;color:#2c3e50;font-weight:600;white-space:nowrap;">Diámetro ${dm}</td>
-            <td style="padding:2px 3px;"><input type="text" style="width:62px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.78em;box-sizing:border-box;" value="${v}" onchange="window.data[${i}]['${k}']=this.value;window.save()"></td>
-            <td style="padding:2px 3px;"><input type="text" style="width:42px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.78em;box-sizing:border-box;" placeholder="Ej:J6" value="${va}" onchange="window.data[${i}]['${ka}']=this.value;window.save()"></td>
+            <td style="padding:2px 4px;font-size:0.78em;color:#666;background:#f5f5f5;white-space:nowrap;text-align:center;">${vIng === '—' ? '—' : vIng}</td>
+            <td style="padding:2px 4px;font-size:0.78em;color:#666;background:#f5f5f5;text-align:center;">${vIngAj === '—' ? '—' : vIngAj}</td>
+            <td style="padding:2px 3px;"><input type="text" style="width:62px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.78em;box-sizing:border-box;" placeholder="mm" value="${vSal}" onchange="window.data[${i}]['${kiSal}']=this.value;window.save()"></td>
+            <td style="padding:2px 3px;"><input type="text" style="width:42px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.78em;box-sizing:border-box;" placeholder="Ej:J6" value="${vSalAj}" onchange="window.data[${i}]['${kiSalAj}']=this.value;window.save()"></td>
         </tr>`;
     }).join('');
-    const listo = (d.metro_salida_listo || {})[sec.key] || false;
-    const resp  = (d.metro_salida_listo_resp || {})[sec.key] || '';
+    const listo  = (d.metro_salida_listo || {})[sec.key] || false;
+    const resp   = (d.metro_salida_listo_resp || {})[sec.key] || '';
     const tolMin = d[pref + '_sal_tol_min'] || '';
     const tolMax = d[pref + '_sal_tol_max'] || '';
     const conc   = d[pref + '_sal_conc'] || '';
+    const tolIngMin = d[pref + '_ing_tol_min'] || '—';
+    const tolIngMax = d[pref + '_ing_tol_max'] || '—';
     return `<div style="background:#fff;border:1px solid #27ae60;border-radius:6px;overflow:hidden;margin-bottom:8px;">
         <div style="background:#1a6b2e;color:white;padding:5px 10px;font-size:0.75em;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:6px;">
             <span>${sec.titulo}</span>
@@ -148,17 +162,22 @@ const _tablaMetroSalida = (i, d, sec) => {
         <table style="width:100%;border-collapse:collapse;">
             <tr style="background:#f0f4fa;">
                 <th style="padding:3px 6px;font-size:0.68em;text-align:left;color:#333;">Parámetro</th>
-                <th style="padding:3px 6px;font-size:0.68em;text-align:left;color:#333;">Valor (mm)</th>
+                <th style="padding:3px 6px;font-size:0.65em;text-align:center;color:#666;">Entrada<br>(mm)</th>
+                <th style="padding:3px 6px;font-size:0.65em;text-align:center;color:#666;">Ajuste<br>Entrada</th>
+                <th style="padding:3px 6px;font-size:0.68em;text-align:left;color:#333;">Salida (mm)</th>
                 <th style="padding:3px 6px;font-size:0.68em;text-align:left;color:#333;">Ajuste</th>
             </tr>
             ${filas}
             <tr style="background:#eef2f8;">
                 <td style="padding:2px 6px;font-size:0.7em;font-weight:700;color:#333;">Tol. ajuste (min/max)</td>
+                <td style="padding:2px 4px;font-size:0.7em;color:#888;text-align:center;">${tolIngMin !== '—' ? '± ' + tolIngMin : '—'}</td>
+                <td style="padding:2px 4px;font-size:0.7em;color:#888;text-align:center;">${tolIngMax !== '—' ? '+ ' + tolIngMax : '—'}</td>
                 <td style="padding:2px 3px;"><input type="text" style="width:40px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.75em;box-sizing:border-box;" title="Tol. mín" value="${tolMin}" onchange="window.data[${i}]['${pref}_sal_tol_min']=this.value;window.save()"></td>
                 <td style="padding:2px 3px;"><input type="text" style="width:40px;padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.75em;box-sizing:border-box;" title="Tol. máx" value="${tolMax}" onchange="window.data[${i}]['${pref}_sal_tol_max']=this.value;window.save()"></td>
             </tr>
             <tr style="background:#f7f9fc;">
                 <td style="padding:2px 6px;font-size:0.7em;font-weight:700;color:#333;">Conclusión</td>
+                <td colspan="2" style="padding:2px 4px;font-size:0.7em;color:#888;text-align:center;">—</td>
                 <td colspan="2" style="padding:2px 4px;">
                     <select style="padding:2px 4px;border:1px solid #bcd;border-radius:3px;font-size:0.74em;" onchange="window.data[${i}]['${pref}_sal_conc']=this.value;window.save()">
                         <option value="">—</option>
@@ -174,12 +193,15 @@ const _tablaMetroSalida = (i, d, sec) => {
 // Planilla de SALIDA completa (6 secciones)
 window._htmlPlanillaMetroSalida = (i, d) => `
     <div class="det-seccion-titulo" style="margin-top:14px;">📐 Planilla Metrológica de Salida</div>
-    <p style="font-size:0.78em;color:#888;margin:4px 0 8px;">Coloca las medidas finales y marca <b>REALIZADO</b> por cada componente terminado.</p>
+    <p style="font-size:0.78em;color:#888;margin:4px 0 8px;">Las columnas <b style="color:#666;">grises</b> muestran los valores de ingreso (solo lectura). Completa las columnas de <b style="color:#2c3e50;">salida</b> con las nuevas mediciones y marca <b>REALIZADO</b> por componente.</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
         ${window.METRO_SECCIONES.map(s => _tablaMetroSalida(i, d, s)).join('')}
     </div>`;
 
-// ── Trabajos automáticos derivados de los estados de la planilla ──
+// ═══════════════════════════════════════════════════════════════════
+// TRABAJOS AUTOMÁTICOS DERIVADOS DE LOS ESTADOS DE LA PLANILLA
+// ═══════════════════════════════════════════════════════════════════
+
 window.obtenerTrabajosMetro = (d) => {
     const t = [];
     const estados = d.metro_state || {};
@@ -187,7 +209,7 @@ window.obtenerTrabajosMetro = (d) => {
         const raw = estados[sec.key];
         let val = '';
         if (typeof raw === 'string') val = raw;
-        else if (raw && typeof raw === 'object') { // compatibilidad OTs antiguas (estado por diámetro)
+        else if (raw && typeof raw === 'object') {
             const vals = Object.values(raw);
             if (vals.includes('malo')) val = 'malo';
             else if (vals.includes('encamisado')) val = 'encamisado';
@@ -197,16 +219,15 @@ window.obtenerTrabajosMetro = (d) => {
         }
         if (!val) return;
         if (sec.tipo === 'tapa') {
-            if (val === 'encamisado')  t.push({ k: 'encam_' + sec.key,     label: '🔧 Encamisado ' + sec.corto });
-            if (val === 'rectificado') t.push({ k: 'rect_' + sec.key,      label: '🗜️ Rectificado ' + sec.corto });
-            if (val === 'malo')        t.push({ k: 'revisar_' + sec.key,   label: '🔍 Revisar ' + sec.corto + ' (elemento malo)' });
+            if (val === 'encamisado')  t.push({ k: 'encam_' + sec.key,   label: '🔧 Encamisado ' + sec.corto });
+            if (val === 'rectificado') t.push({ k: 'rect_' + sec.key,    label: '🗜️ Rectificado ' + sec.corto });
+            if (val === 'malo')        t.push({ k: 'revisar_' + sec.key, label: '🔍 Revisar ' + sec.corto + ' (elemento malo)' });
         } else {
-            if (val === 'metalado')    t.push({ k: 'metal_' + sec.key,     label: '🖌️ Metalado ' + sec.corto });
-            if (val === 'rectificado') t.push({ k: 'rect_' + sec.key,      label: '🗜️ Rectificado ' + sec.corto });
-            if (val === 'malo')        t.push({ k: 'revisar_' + sec.key,   label: '🔍 Revisar ' + sec.corto + ' (elemento malo)' });
+            if (val === 'metalado')    t.push({ k: 'metal_' + sec.key,   label: '🖌️ Metalado ' + sec.corto });
+            if (val === 'rectificado') t.push({ k: 'rect_' + sec.key,    label: '🗜️ Rectificado ' + sec.corto });
+            if (val === 'malo')        t.push({ k: 'revisar_' + sec.key, label: '🔍 Revisar ' + sec.corto + ' (elemento malo)' });
         }
     });
-    // Compatibilidad con banderas antiguas (OTs ya existentes)
     if (d.enc_lc == 'si') t.push({ k: 'encam_lc',  label: '🔧 Encamisado Lado Carga (LC)' });
     if (d.enc_ll == 'si') t.push({ k: 'encam_ll',  label: '🔧 Encamisado Lado Libre (LL)' });
     if (d.met_lc == 'si') t.push({ k: 'metal_lc',  label: '🖌️ Metalado / Rectificado Eje LC' });
@@ -218,7 +239,7 @@ window.obtenerTrabajosMetro = (d) => {
     return t;
 };
 
-// ══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
 
 window.renderAreaMecanica = function(i, d, obs, p) {
     let UI = '';
