@@ -562,14 +562,24 @@ window.render = () => {
                 UI = window.renderAreaCalidad ? window.renderAreaCalidad(i, d, obs, p) : '';
             }
             else if (window.vistaActual === 'mecanica') {
-                UI = window.renderAreaMecanica ? window.renderAreaMecanica(i, d, obs, p) : '';
-            }
-            else if (window.vistaActual === 'bobinado' && d.estado === 'ejecucion_trabajos' && d.tipoTrabajo === 'bobinado') {
-                UI = window.renderAreaBobinado ? window.renderAreaBobinado(i, d, obs, p) : '';
-            }
-            else if (window.vistaActual === 'armado_bal') {
-                UI = window.renderAreaArmado ? window.renderAreaArmado(i, d, obs, p) : '';
-            }
+            UI = window.renderAreaMecanica ? window.renderAreaMecanica(i, d, obs, p) : '';
+            // Si la OT fue rechazada en pruebas y Mecánica está marcada, mostrar panel de corrección
+           if (d.pruebas_rechaza?.areas?.includes('mecanica')) {
+           UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'mecanica') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
+                }
+           }
+          else if (window.vistaActual === 'bobinado' && (d.estado === 'ejecucion_trabajos' && d.tipoTrabajo === 'bobinado' || d.pruebas_rechaza?.areas?.includes('bobinado'))) {
+          UI = window.renderAreaBobinado ? window.renderAreaBobinado(i, d, obs, p) : '';
+          if (d.pruebas_rechaza?.areas?.includes('bobinado')) {
+          UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'bobinado') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
+               }
+          }
+          else if (window.vistaActual === 'armado_bal') {
+          UI = window.renderAreaArmado ? window.renderAreaArmado(i, d, obs, p) : '';
+          if (d.pruebas_rechaza?.areas?.includes('armado_bal')) {
+          UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'armado_bal') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
+               }
+           }
             else if (window.vistaActual === 'despacho' && d.estado === 'despacho') {
                 UI = window.renderAreaDespacho ? window.renderAreaDespacho(i, d, obs, p) : '';
             }
