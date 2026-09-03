@@ -171,7 +171,7 @@ window._dibujarGrafEnCanvas = function(canvas, datos, exportMode=false) {
     const minV=Math.floor(rawMin - range*0.08);
     const maxV=Math.ceil(rawMax  + range*0.12);
 
-    const xS=n2=>pad.l+(n2/(datos.length-1))*cW;
+    const xS=n=>pad.l+(n2=>0, n/(datos.length-1))*cW;
     const yS=v=>pad.t+cH-((v-minV)/(maxV-minV||1))*cH;
 
     // Grillas horizontales
@@ -550,6 +550,7 @@ window.qcRechazoPanel = { areas: {}, motivo: '' };
 
 window.qcMostrarPanelRechazo = (i) => {
     const d = window.data[i];
+    // Restaurar selección previa si existe
     const prev = (d.pruebas_rechaza && d.pruebas_rechaza.areas) || [];
     window.qcRechazoPanel = { areas: Object.fromEntries(prev.map(a => [a,true])), motivo: (d.pruebas_rechaza && d.pruebas_rechaza.motivo) || '' };
     const html = `
@@ -675,6 +676,5 @@ window.irAOT = (areaId, otId) => {
         if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 200);
 };
-
 
 
