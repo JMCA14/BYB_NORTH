@@ -538,6 +538,124 @@ window.toggleAccordion = (event) => {
     }
 }
 
+// ── QC: Aprobar / Rechazar Pruebas Dinámicas ────────────────────
+window._AREA_RECHAZO_LABEL = {
+    mecanica:  '⚙️ Mecánica',
+    bobinado:  '🌀 Bobinado',
+    armado_bal:'🔩 Balanceo / Armado',
+};
+
+// Guardar temporalmente (en memoria) los valores del panel de rechazo antes de confirmar
+window.qcRechazoPanel = { areas: {}, motivo: '' };
+
+window.qcMostrarPanelRechazo = (i) => {
+    const d = window.data[i];
+    const prev = (d.pruebas_rechaza && d.pruebas_rechaza.areas) || [];
+    window.qcRechazoPanel = { areas: Object.fromEntries(prev.map(a => [a,true])), motivo: (d.pruebas_rechaza && d.pruebas_rechaza.motivo) || '' };
+    const html = `
+        <div id="modalQCRechazo" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+            <div style="background:#fff;border-radius:10px;padding:24px;max-width:520px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+                <h3 style="margin:0 0 6px 0;color:#c0392b;">❌ Rechazar Pruebas — OT ${d.ot}</h3>
+                <p style="font-size:0.85em;color:#888;margin:0 0 14px 0;">Marca el/las áreas que deben revisar y corregir. La OT no avanzará hasta que resuelvan y se reenvíe a pruebas.</p>
+
+                <div style="font-weight:700;font-size:0.9em;color:#1a2a3a;margin-bottom:8px;">Áreas a inspeccionar:</div>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+                    ${Object.entries(window._AREA_RECHAZO_LABEL).map(([area,label]) => `
+                        <label style="display:flex;align-items:center;gap:8px;background:#f8f9fa;border:1.5px solid ${window.qcRechazoPanel.areas[area]?'#e74c3c':'#dde1e7'};border-radius:8px;padding:10px 12px;cursor:pointer;user-select:none;">
+                            <input type="checkbox" ${window.qcRechazoPanel.areas[area]?'checked':''} style="width:18px;height:18px;accent-color:#e74c3c;"
+                                onchange="window.qcRechazoPanel.areas['${area}']=this.checked;this.closest('label').style.borderColor=this.checked?'#e74c3c':'#dde1e7'">
+                            <span style="font-size:0.9em;font-weight:600;">${label}</span>
+                        </label>`).join('')}
+                </div>
+
+                <div style="font-weight:700;font-size:0.9em;color:#1a2a3a;margin-bottom:6px;">Motivo del rechazo <span style="color:#e74c3c;">*</span></div>
+                <textarea id="qc_rechazo_motivo" placeholder="Describe por qué se rechaza y qué corregir..." style="width:100%;min-height:80px;padding:8px 10px;border:1.5px solid #dde1e7;border-radius:6px;font-size:0.9em;resize:vertical;box-sizing:border-box;"
+                    oninput="window.qcRechazoPanel.motivo=this.value"></textarea>
+
+                <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+                    <button onclick="document.getElementById('modalQCRechazo').style.display='none'" style="padding:10px 18px;background:#95a5a6;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Cancelar</button>
+                    <button onclick="window.qcConfirmarRechazo(${i})" style="padding:10px 20px;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;">❌ Confirmar Rechazo</button>
+                </div>
+            </div>
+        </div>`;
+    const old = document.getElementById('modalQCRechazo');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    const ta = document.getElementById('qc_rechazo_motivo');
+    if (ta) ta.value = window.qcRechazoPanel.motivo;
+};
+
+window.qcConfirmarRechazo = (i) => {
+    const d = window.data[i];
+    const areas = Object.keys(window.qcRechazoPanel.areas).filter(a => window.qcRechazoPanel.areas[a]);
+    const motivo = (window.qcRechazoPanel.motivo || '').trim();
+    if (areas.length === 0) { alert('⚠️ Debes marcar al menos un área a inspeccionar.'); return; }
+    if (!motivo) { alert('⚠️ Debes escribir el motivo del rechazo.'); return; }
+    d.pruebas_rechaza = { areas, motivo, listas: {} };
+    window.save();
+    window.render();
+    const m = document.getElementById('modalQCRechazo');
+    if (m) m.style.display = 'none';
+    alert(`❌ OT rechazada.\n\nÁreas a inspeccionar: ${areas.map(a => window._AREA_RECHAZO_LABEL?.[a]||a).join(', ')}\n\nDeben resolver y reenviar la OT para volver a Pruebas.`);
+};
+
+// Marcar que un área resolvió su parte tras el rechazo
+window.qcMarcarAreaLista = (i, area) => {
+    const d = window.data[i];
+    if (!d.pruebas_rechaza?.areas?.includes(area)) return;
+    if (!d.pruebas_rechaza.listas) d.pruebas_rechaza.listas = {};
+    d.pruebas_rechaza.listas[area] = true;
+    d.pruebas_rechaza.listas[area + '_resp'] = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
+    window.save(); window.render();
+};
+
+window.qcDesmarcarAreaLista = (i, area) => {
+    const d = window.data[i];
+    if (!d.pruebas_rechaza?.areas?.includes(area)) return;
+    if (!d.pruebas_rechaza.listas) d.pruebas_rechaza.listas = {};
+    d.pruebas_rechaza.listas[area] = false;
+    window.save(); window.render();
+};
+
+// ¿Todas las áreas marcadas por el rechazo ya resolvieron?
+window.qcTodasAreasListas = (d) => {
+    if (!d.pruebas_rechaza?.areas?.length) return false;
+    return d.pruebas_rechaza.areas.every(a => d.pruebas_rechaza.listas && d.pruebas_rechaza.listas[a]);
+};
+
+// Reenviar la OT a Pruebas Dinámicas tras resolver el rechazo
+window.qcReenviarAPruebas = (i) => {
+    const d = window.data[i];
+    if (!window.qcTodasAreasListas(d)) {
+        alert('⚠️ Aún hay áreas marcadas que no han confirmado su resolución.');
+        return;
+    }
+    if (!confirm('¿Reenviar esta OT a Pruebas Dinámicas?\n\nLa OT quedará disponible en Control Calidad para una nueva aprobación.')) return;
+    delete d.pruebas_rechaza;
+    window.save(); window.render();
+};
+
+// Panel que se muestra en cada área marcada cuando hay un rechazo de pruebas
+window._htmlPanelRechazoPruebas = (i, d, miArea) => {
+    if (!d.pruebas_rechaza?.areas?.includes(miArea)) return '';
+    const areaLabel = window._AREA_RECHAZO_LABEL?.[miArea] || miArea;
+    const listo = !!(d.pruebas_rechaza.listas && d.pruebas_rechaza.listas[miArea]);
+    const nombre = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
+    return `<div style="background:#fff5f5;border:2px solid #e74c3c;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+        <div style="font-weight:800;color:#c0392b;font-size:0.95em;margin-bottom:6px;">❌ OT RECHAZADA EN PRUEBAS DINÁMICAS</div>
+        <div style="font-size:0.85em;color:#555;margin-bottom:4px;"><b>Motivo:</b> ${d.pruebas_rechaza.motivo}</div>
+        <div style="font-size:0.82em;color:#888;margin-bottom:10px;"><b>Este área debe:</b> ${areaLabel}. Corrige/inspecciona y marca como resuelto.</div>
+        ${listo
+            ? `<div style="display:flex;align-items:center;gap:8px;background:#eafff2;border:1.5px solid #27ae60;border-radius:8px;padding:8px 12px;">
+                <span style="font-size:1.4em;">✅</span>
+                <span style="flex:1;font-size:0.88em;color:#1a7a44;"><b>Resuelto</b> · ${d.pruebas_rechaza.listas?.[miArea+'_resp'] || ''}</span>
+                <button onclick="window.qcDesmarcarAreaLista(${i},'${miArea}')" style="background:none;border:1px solid #27ae60;color:#1a7a44;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:0.82em;">Desmarcar</button>
+            </div>`
+            : `<button onclick="window.qcMarcarAreaLista(${i},'${miArea}')" style="background:#27ae60;color:white;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:bold;font-size:0.88em;">✅ Marcar ${areaLabel} como resuelto · ${nombre}</button>`
+        }
+    </div>`;
+};
+
 // Navegar directo a una OT en su área y abrirla
 window.irAOT = (areaId, otId) => {
     const vistaMap = {
