@@ -364,21 +364,20 @@ window.renderAreaCalidad = function(i, d, obs, p) {
                             </div>
                         </div>
                         ${window.htmlSensoresSalida ? window.htmlSensoresSalida(i) : ''}
-                        ${window.htmlSensoresSalida ? window.htmlSensoresSalida(i) : ''}
 
-<div class="det-seccion-titulo" style="margin-top:14px;">✅ Resultado de las Pruebas Dinámicas</div>
-${d.pruebas_rechaza && d.pruebas_rechaza.motivo ? `
-<div style="background:#fff5f5;border:1.5px solid #e74c3c;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
-    <div style="font-weight:800;color:#c0392b;font-size:0.95em;margin-bottom:6px;">❌ OT RECHAZADA EN PRUEBAS</div>
-    <div style="font-size:0.85em;color:#555;margin-bottom:4px;"><b>Áreas a inspeccionar:</b> ${(d.pruebas_rechaza.areas||[]).map(a => window._AREA_RECHAZO_LABEL?.[a]||a).join(', ')||'—'}</div>
-    <div style="font-size:0.85em;color:#555;"><b>Motivo:</b> ${d.pruebas_rechaza.motivo}</div>
-    <div style="font-size:0.7em;color:#888;margin-top:6px;">Cuando las áreas marcadas resuelvan y se reenvíe la OT, podrás aprobar nuevamente aquí.</div>
-</div>
-<button class="btn-finish" onclick="delete window.data[${i}].pruebas_rechaza; window.updateFlujo(${i},'pruebas_ok','terminaciones')">✅ Aprobar y Continuar → Terminaciones</button>`
-: `<div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <button class="btn-finish" onclick="window.updateFlujo(${i},'pruebas_ok','terminaciones')">✅ APROBAR → Terminaciones</button>
-    <button onclick="window.qcMostrarPanelRechazo(${i})" style="background:#e74c3c;color:white;padding:10px 18px;font-weight:bold;border-radius:6px;border:none;cursor:pointer;">❌ RECHAZAR</button>
-</div>`}
+                        <div class="det-seccion-titulo" style="margin-top:14px;">✅ Resultado de las Pruebas Dinámicas</div>
+                        ${d.pruebas_rechaza && d.pruebas_rechaza.motivo ? `
+                        <div style="background:#fff5f5;border:1.5px solid #e74c3c;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+                            <div style="font-weight:800;color:#c0392b;font-size:0.95em;margin-bottom:6px;">❌ OT RECHAZADA EN PRUEBAS</div>
+                            <div style="font-size:0.85em;color:#555;margin-bottom:4px;"><b>Áreas a inspeccionar:</b> ${(d.pruebas_rechaza.areas||[]).map(a => window._AREA_RECHAZO_LABEL?.[a]||a).join(', ')||'—'}</div>
+                            <div style="font-size:0.85em;color:#555;"><b>Motivo:</b> ${d.pruebas_rechaza.motivo}</div>
+                            <div style="font-size:0.7em;color:#888;margin-top:6px;">Cuando las áreas marcadas resuelvan y se reenvíe la OT, podrás aprobar nuevamente aquí.</div>
+                        </div>
+                        <button class="btn-finish" onclick="delete window.data[${i}].pruebas_rechaza; window.updateFlujo(${i},'pruebas_ok','terminaciones')">✅ Aprobar y Continuar → Terminaciones</button>`
+                        : `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn-finish" onclick="window.updateFlujo(${i},'pruebas_ok','terminaciones')">✅ APROBAR → Terminaciones</button>
+                            <button onclick="window.qcMostrarPanelRechazo(${i})" style="background:#e74c3c;color:white;padding:10px 18px;font-weight:bold;border-radius:6px;border:none;cursor:pointer;">❌ RECHAZAR</button>
+                        </div>`}`;
                 }
                 else if (d.estado === 'check_salida') {
                     const pRec   = d.piezas_recepcion || [];
