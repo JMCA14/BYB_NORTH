@@ -188,7 +188,7 @@ window.htmlSensoresIngreso = (i) => {
         const fotosHtml = (s.fotos || []).map((f, fi) => {
             const src = f.url ? f.url : (f.b64 ? `data:image/jpeg;base64,${f.b64}` : '');
             if (!src) return '';
-            const thumb = f.url ? f.url.replace('/upload/', '/upload/w_48,h_48,c_fill,q_auto/') : src;
+            const thumb = f.url ? f.url : src;
             return `<div style="position:relative;display:inline-block;margin:1px;">
                 <img src="${thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:3px;border:1px solid #b0c8e8;cursor:pointer;"
                     onclick="window.open('${src}')" loading="lazy" onerror="this.src='${src}'">
@@ -314,7 +314,7 @@ window.htmlSensoresSalida = (i) => {
         const fotosHtml = fotArr.map((f, fi) => {
             const src = f.url ? f.url : (f.b64 ? `data:image/jpeg;base64,${f.b64}` : '');
             if (!src) return '';
-            const thumb = f.url ? f.url.replace('/upload/', '/upload/w_44,h_44,c_fill,q_auto/') : src;
+            const thumb = f.url ? f.url : src;
             return `<div style="position:relative;display:inline-block;margin:1px;">
                 <img src="${thumb}" style="width:40px;height:40px;object-fit:cover;border-radius:3px;border:1px solid #b0c8e8;cursor:pointer;"
                     onclick="window.open('${src}')" loading="lazy" onerror="this.src='${src}'">

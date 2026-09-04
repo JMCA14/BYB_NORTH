@@ -468,8 +468,8 @@ window.guardarObsCheckArmado = (i, clave, valor) => {
 
 // ── Fotos por componente / etapa ─────────────────────────────
 // NOTA: subirFotosSimples, subirFotosComponente, _htmlFotosComponente
-// y _htmlFotosSimples están definidas en 08_fotos.js (Cloudinary).
-// Las funciones de abajo solo se usan si 08_fotos.js no está cargado.
+// y _htmlFotosSimples están definidas en fotos.js (versión Firebase Storage).
+// Las funciones de abajo solo se usan si fotos.js no está cargado.
 
 window.eliminarFotoSimple = (i, etapa, idx) => {
     const d = window.data[i];

@@ -1,6 +1,6 @@
 
 // NOTA: _htmlFotosSimples, _verFotoSimple, _fotosNuevaOT y _agregarFotosNuevaOT
-// están definidos en fotos.js (versión Cloudinary).
+// están definidos en fotos.js (versión Firebase Storage).
 // No redefinir aquí para evitar sobreescribir la versión correcta.
 
 
@@ -173,18 +173,13 @@ window.render = () => {
                 </div>
                 <p id="formUsuError" style="color:var(--danger);margin-top:8px;"></p>
             </div>
-            <div id="cardDropbox" style="margin-top:24px;background:#f0f7f3;border:1px solid #bfe3cf;border-radius:8px;padding:18px;">
-                <h3 style="margin:0 0 6px;">☁️ Dropbox — Fotos</h3>
-                <p style="font-size:0.85em;color:var(--text2);margin:0 0 12px;line-height:1.5;">
-                    Las fotos de cada proceso se suben a tu Dropbox (carpetas por OT y por proceso) a través de una Cloud Function.
-                    Para que funcione, pega aquí <b>una sola vez</b> el token de Dropbox. No se guarda en el código ni se sube a GitHub.
+            <div id="cardStorage" style="margin-top:24px;background:#eef6ff;border:1px solid #c3d9f0;border-radius:8px;padding:18px;">
+                <h3 style="margin:0 0 6px;">☁️ Fotos — Firebase Storage</h3>
+                <p style="font-size:0.85em;color:var(--text2);margin:0;line-height:1.5;">
+                    Las fotos de cada proceso se guardan automáticamente en Firebase Cloud Storage
+                    (carpetas por OT y por proceso). <b>No necesitas token ni configuración</b>: se suben
+                    directamente desde el navegador y se protegen con el inicio de sesión de la app.
                 </p>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                    <input id="dropboxTokenInput" type="password" placeholder="Pega aquí tu token de Dropbox (sl.…)…"
-                        style="flex:1;min-width:250px;padding:10px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:0.9em;outline:none;box-sizing:border-box;">
-                    <button class="btn-success" onclick="window.guardarTokenConfig()">💾 Guardar Token</button>
-                </div>
-                <p id="dropboxConfigMsg" style="font-size:0.85em;margin-top:8px;color:var(--text2);"></p>
             </div>
         </div>`;
         return;

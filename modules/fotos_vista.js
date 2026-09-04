@@ -37,7 +37,7 @@ const _imgSrc = (f) => {
 
 const _thumbSrc = (f) => {
     if (!f) return null;
-    if (f.url) return f.url.replace('/upload/', '/upload/w_160,h_120,c_fill,q_auto/');
+    if (f.url) return f.url; // Firebase Storage: URL completa (no necesita transformación)
     return _imgSrc(f);
 };
 

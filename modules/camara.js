@@ -419,11 +419,8 @@ const _mostrarToast = (msg, ms = 2000) => {
 };
 
 // ════════════════════════════════════════════════════════════
-//  HELPERS — Compresión y Cloudinary
+//  HELPERS — Compresión y Firebase Storage
 // ════════════════════════════════════════════════════════════
-const CLOUD_NAME_CAM     = 'dboystolg';
-const UPLOAD_PRESET_CAM  = 'fotos_taller';
-const CLOUDINARY_URL_CAM = `https://api.cloudinary.com/v1_1/${CLOUD_NAME_CAM}/image/upload`;
 const COMP_MAX_PX_CAM    = 1600;
 const COMP_QUALITY_CAM   = 0.82;
 
@@ -452,17 +449,9 @@ const _comprimirBlob = (blob) => new Promise((resolve, reject) => {
 });
 
 const _subirBlobACloudinary = async (blob, carpeta) => {
-    const fd = new FormData();
-    fd.append('file', blob, 'foto.jpg');
-    fd.append('upload_preset', UPLOAD_PRESET_CAM);
-    fd.append('folder', carpeta);
-    const resp = await fetch(CLOUDINARY_URL_CAM, { method: 'POST', body: fd });
-    if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error?.message || `Cloudinary error ${resp.status}`);
-    }
-    const data = await resp.json();
-    return data.secure_url;
+    // Nombre histórico: ahora sube a Firebase Storage (sin Cloudinary, sin tokens).
+    const res = await window.subirImagenStorage({ blob, nombre: `camara_${Date.now()}.jpg`, ruta: carpeta });
+    return res.url;
 };
 
 // ════════════════════════════════════════════════════════════

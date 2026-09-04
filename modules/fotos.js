@@ -1,29 +1,16 @@
 // ════════════════════════════════════════════════════════════
-//  08_fotos.js  —  Sistema de fotos con Cloudinary
+//  fotos.js  —  Sistema de fotos con Firebase Cloud Storage
 //  BYB Norte | Taller de Motores
 //
-//  FLUJO NUEVO:
-//    foto → comprimir en navegador (~60KB) → subir a Cloudinary
-//    → guardar solo la URL en Firebase Realtime DB
+//  FLUJO:
+//    foto → comprimir en navegador (~60KB) → subir DIRECTAMENTE a
+//    Firebase Cloud Storage (sin tokens, sin terceros) →
+//    guardar la URL pública en Firebase Realtime DB.
 //
 //  COMPATIBILIDAD HACIA ATRÁS:
 //    Fotos antiguas guardadas como { b64, ext } siguen
 //    funcionando en pantalla y en el Word sin cambios.
-//
-//  INSTALACIÓN (solo 1 línea en index.html):
-//    En el <script type="module">, agregar ANTES de 07_render.js:
-//         import './08_fotos.js';
 // ════════════════════════════════════════════════════════════
-
-// ── CONFIGURACIÓN DROPBOX ───────────────────────────────────
-// La app sube las fotos vía la Cloud Function "subirFotoDropbox",
-// que guarda el archivo en Dropbox dentro de carpetas por OT y por
-// proceso, y devuelve una URL pública. El token de Dropbox vive en
-// Firebase (config_byb) y NUNCA está en este código.
-//
-// Descripción del flujo:
-//   foto → comprimir en navegador (~60KB) → enviar a Cloud Function
-//   → subir a Dropbox (carpeta byb_norte/ot_<OT>/<proceso>/...) → guardar URL.
 
 // Compresión agresiva para 40+ fotos de celular por OT
 // 4MB foto celular → ~60-80KB después de comprimir
@@ -107,18 +94,15 @@ const comprimirImagen = async (file) => {
     });
 };
 
-// ── 2. SUBIDA A DROPBOX (vía Cloud Function) ────────────────
+// ── 2. SUBIDA A FIREBASE STORAGE (directo, sin tokens) ──────
 const subirAAlmacen = async (blob, carpeta, nombreFoto) => {
     // carpeta ejemplo: "byb_norte/ot_123/mecanica" o ".../mecanica/cigueñal"
-    const ext = (nombreFoto || 'foto.jpg').split('.').pop() || 'jpg';
-    const base = (nombreFoto || `foto_${Date.now()}`).replace(/[\/\\]/g, '_').replace(/\.[^.]+$/, '');
-    const nombreFinal = `${base}.${ext}`;
-    const res = await window.subirImagenDropbox({
+    const res = await window.subirImagenStorage({
         blob,
-        nombre: nombreFinal,
+        nombre: nombreFoto || 'foto.jpg',
         ruta: carpeta,
     });
-    return res.url; // URL pública dl.dropboxusercontent.com (puede ser null si falló el link)
+    return res.url; // URL pública de Firebase Storage (getDownloadURL)
 };
 
 // ── 3. PROCESADOR INTERNO ────────────────────────────────────
@@ -248,7 +232,7 @@ window._agregarFotosNuevaOT = async (inputEl) => {
         if (progEl) progEl.textContent = `⏳ ${fi + 1}/${files.length}`;
         try {
             const blob = await comprimirImagen(files[fi]);
-            // Subir a Dropbox vía Cloud Function (carpeta temporal nueva_ot_temp)
+            // Subir a Firebase Storage (carpeta temporal nueva_ot_temp)
             const url = await subirAAlmacen(blob, `byb_norte/nueva_ot_temp`, files[fi].name);
             window._fotosNuevaOT.push({ url, ext: 'jpeg', nombre: files[fi].name, usuario: window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—' });
         } catch(e) { console.error('Error foto nueva OT:', e); }
@@ -272,10 +256,10 @@ window._refrescarPreviewNuevaOT = () => {
     }).join('');
 };
 
-// Sube las fotos temporales a Cloudinary al crear la OT
+// Sube las fotos temporales a Firebase Storage al crear la OT
 // USAR en window.nuevaOT() después de asignar el número de OT
 window._subirFotosNuevaOT = async (ot) => {
-    // Las fotos ya fueron subidas a Cloudinary en _agregarFotosNuevaOT
+    // Las fotos ya fueron subidas a Firebase Storage en _agregarFotosNuevaOT
     // Solo devolvemos las URLs guardadas
     const resultado = window._fotosNuevaOT
         .filter(f => f.url)
@@ -305,10 +289,8 @@ window._htmlFotosSimples = (i, etapa, titulo) => {
     const grid = fotos.map((f, fi) => {
         const src   = f.url ? f.url : (f.b64 ? `data:image/${f.ext||'jpeg'};base64,${f.b64}` : null);
         if (!src) return '';
-        // Thumbnail de Cloudinary (90×68, sin costo extra de ancho de banda)
-        const thumb = f.url
-            ? f.url.replace('/upload/', '/upload/w_90,h_68,c_fill,q_auto/')
-            : src;
+        // Thumbnail (URL original; Firebase Storage no necesita transformación)
+        const thumb = f.url ? f.url : src;
         return `<div style="position:relative;display:inline-block;margin:3px;">
             <img src="${thumb}"
                  style="width:90px;height:68px;object-fit:cover;border-radius:4px;border:1px solid #dde1e7;cursor:pointer;"
@@ -342,9 +324,7 @@ window._htmlFotosComponente = (i, etapa, clave, fotos) => {
     fotos.forEach((item, fi) => {
         const src = item.url ? item.url : (item.b64 ? `data:image/${item.ext||'jpeg'};base64,${item.b64}` : '');
         if (!src) return;
-        const thumb = item.url
-            ? item.url.replace('/upload/', '/upload/w_54,h_54,c_fill,q_auto/')
-            : src;
+        const thumb = item.url ? item.url : src;
         html += `<div style="position:relative;display:inline-block;">
             <a href="${src}" target="_blank">
                 <img src="${thumb}" style="width:54px;height:54px;object-fit:cover;border-radius:4px;border:1.5px solid #b0c8e8;cursor:pointer;" loading="lazy" onerror="this.src='${src}'">
@@ -357,7 +337,7 @@ window._htmlFotosComponente = (i, etapa, clave, fotos) => {
 };
 
 // ── 10. CONVERSIÓN URL → BASE64 PARA EL WORD ─────────────────
-// Cloudinary no tiene restricciones CORS, fetch funciona directo
+// Firebase Storage permite CORS desde cualquier origen (fetch directo).
 
 const _cacheB64 = new Map();
 
@@ -379,14 +359,11 @@ window._urlToB64 = async (url) => {
     });
 
     try {
-        const urlWord = url.includes('cloudinary.com')
-            ? url.replace('/upload/', '/upload/w_1000,q_70,f_jpg/')
-            : url;
         let blob;
         try {
-            blob = await _fetchBlob(urlWord);
+            blob = await _fetchBlob(url);
         } catch(e) {
-            console.error('⚠️ FOTO: Transformación Cloudinary falló, intentando URL original:', e.message);
+            console.error('⚠️ FOTO: Descarga falló con URL original, reintentando sin token:', url, e.message);
             try {
                 blob = await _fetchBlob(url);
             } catch(e2) {
@@ -414,7 +391,7 @@ window._prepararFotosParaWord = async (fotos) => {
             continue;
         }
         if (f.url && typeof f.url === "string") {
-            console.log('📄 WORD: Descargando foto desde Cloudinary:', f.url.substring(0,60) + '...');
+            console.log('📄 WORD: Descargando foto desde Storage:', f.url.substring(0,60) + '...');
             const b64 = await window._urlToB64(f.url);
             if (b64 && b64.length > 100) {
                 console.log('📄 WORD: ✅ Foto descargada OK');
@@ -442,5 +419,5 @@ window._prepararFotosCompParaWord = async (fotosObj) => {
 
 // Exponer funciones para que sensores.js y otros módulos puedan usarlas
 window._comprimirImagen  = comprimirImagen;
-// sensores.js usa window._subirACloudinary (sube a Dropbox vía Cloud Function)
+// sensores.js usa window._subirACloudinary (nombre histórico; sube a Firebase Storage)
 window._subirACloudinary = subirAAlmacen;
