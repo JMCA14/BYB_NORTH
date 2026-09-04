@@ -222,8 +222,16 @@ window.barraAvance = (pct, mostrarNum=true) => {
 
 window.actualizarAlertas = () => {
     const counts = { desarme: 0, calidad: 0, mecanica: 0, bobinado: 0, armado: 0, despacho: 0 };
+    const rechazos = { mecanica: 0, bobinado: 0, armado: 0 };
     window.data.forEach(d => {
         const p = d.pasos || {};
+        // Rechazos de Pruebas Dinámicas: áreas marcadas que aún no confirman su resolución
+        const rj = d.pruebas_rechaza;
+        if (rj && rj.areas) {
+            if (rj.areas.includes('mecanica') && !(rj.listas && rj.listas['mecanica'])) rechazos.mecanica++;
+            if (rj.areas.includes('bobinado') && !(rj.listas && rj.listas['bobinado'])) rechazos.bobinado++;
+            if (rj.areas.includes('armado_bal') && !(rj.listas && rj.listas['armado_bal'])) rechazos.armado++;
+        }
         if (d.estado === 'desarme' && !p.desarme_ok) counts.desarme++;
         if (d.estado === 'ejecucion_trabajos' && !p.mant_ok) counts.desarme++;
         if (d.estado === 'ingresos_pendientes' && !p.med_ok) counts.calidad++;
@@ -238,16 +246,21 @@ window.actualizarAlertas = () => {
         if (d.estado === 'terminaciones' && !p.term_ok) counts.calidad++;
         if (d.estado === 'despacho') counts.despacho++;
     });
-    const setLabel = (id, text, num) => {
+    const setLabel = (id, text, num, rech) => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = num > 0 ? `${text} <span class="alert-count">${num}</span>` : text;
+        if (!el) return;
+        const rechBadge = rech > 0
+            ? ` <span class="rechazo-count" title="Trabajo especial de rechazo: la OT fue devuelta de Pruebas Dinámicas (ver motivo al abrirla)">❌ ${rech}</span>`
+            : '';
+        const numBadge = num > 0 ? ` <span class="alert-count">${num}</span>` : '';
+        el.innerHTML = `${text}${rechBadge}${numBadge}`;
     };
-    setLabel('m-desarme', 'Desarme y Mant.', counts.desarme);
-    setLabel('m-calidad', 'Control Calidad', counts.calidad);
-    setLabel('m-mecanica', 'Área Mecánica', counts.mecanica);
-    setLabel('m-bobinado', 'Área Bobinado', counts.bobinado);
-    setLabel('m-armado', 'Balanceo y Armado', counts.armado);
-    setLabel('m-despacho', 'Área Despacho', counts.despacho);
+    setLabel('m-desarme', 'Desarme y Mant.', counts.desarme, 0);
+    setLabel('m-calidad', 'Control Calidad', counts.calidad, 0);
+    setLabel('m-mecanica', 'Área Mecánica', counts.mecanica, rechazos.mecanica);
+    setLabel('m-bobinado', 'Área Bobinado', counts.bobinado, rechazos.bobinado);
+    setLabel('m-armado', 'Balanceo y Armado', counts.armado, rechazos.armado);
+    setLabel('m-despacho', 'Área Despacho', counts.despacho, 0);
 };
 
 

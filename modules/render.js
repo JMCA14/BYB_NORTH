@@ -71,8 +71,10 @@ window.render = () => {
                     }
                     // Determinar vista destino según área
                     const vistaDestino = { desarme_mant:'desarme', calidad:'calidad', mecanica:'mecanica', bobinado:'bobinado', armado_bal:'armado', despacho:'despacho' }[areaId] || 'dashboard';
+                    const esRechazo = d.pruebas_rechaza && (d.pruebas_rechaza.areas || []).includes(areaId);
+                    const rechazoHtml = esRechazo ? `<span style="background:#e74c3c;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.72em;font-weight:800;margin-left:6px;cursor:help;" title="${(d.pruebas_rechaza.motivo||'').replace(/"/g,'&quot;')}">❌ RECHAZO</span>` : '';
                     html += `<tr style="background:${info.bg};">
-                        <td><strong>OT ${d.ot}</strong>${d.pri==='urgente'?` <span style="color:var(--danger);font-size:0.75em;">🔴 URGENTE</span>`:''}</td>
+                        <td><strong>OT ${d.ot}</strong>${rechazoHtml}${d.pri==='urgente'?` <span style="color:var(--danger);font-size:0.75em;">🔴 URGENTE</span>`:''}</td>
                         <td>${d.empresa||'—'}</td>
                         <td><span style="background:${info.color};color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75em;font-weight:700;">${estadoBadge}</span></td>
                         <td style="font-size:0.85em;">${(d.tipoTrabajo||'—').toUpperCase()}</td>
@@ -118,7 +120,7 @@ window.render = () => {
                 tHtml += `<tr ${d.pri==='urgente'?'style="background:#fdf3f3;"':''}>
                     <td><b style="color:var(--accent)">${d.ot}</b>${d.pri==='urgente'?' <span style="color:var(--danger);font-size:0.75em;">🔴</span>':''}</td>
                     <td>${d.empresa||'—'}</td>
-                    <td><span style="font-weight:700;color:#b9770e;font-size:0.85em;">${etapaLabel}</span></td>
+                    <td><span style="font-weight:700;color:#b9770e;font-size:0.85em;">${etapaLabel}</span><br>${d.pruebas_rechaza ? `<span style="font-weight:700;color:#e74c3c;font-size:0.75em;cursor:help;" title="Rechazado por ${(d.pruebas_rechaza.autor||'—')} · ${(d.pruebas_rechaza.motivo||'')}">❌ RECHAZO${(d.pruebas_rechaza.areas||[]).length?` · ${d.pruebas_rechaza.areas.map(a=>((window._AREA_RECHAZO_LABEL||{})[a]||a).replace(/^\S*\s*/,'')).join(', ')}`:''}</span>`:''}</td>
                     <td>${procesoMini}</td>
                     <td>${window.barraAvance(window.calcularAvance(d))}</td>
                     <td style="font-size:0.85em;">${fechaCell}</td>

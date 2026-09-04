@@ -42,6 +42,8 @@
         .menuItem:hover { background: var(--sidebar-hover); color: white; border-left-color: #f39c12; }
         .menuItem.active-menu { background: var(--sidebar-hover); color: white; border-left-color: #f39c12; }
         .alert-count { background: var(--warning); color: #000; border-radius: 10px; padding: 1px 7px; font-size: 0.75em; font-weight: 700; margin-left: auto; }
+        .rechazo-count { background: #e74c3c; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 0.75em; font-weight: 700; margin-left: auto; box-shadow: 0 0 6px rgba(231,76,60,0.7); animation: rechazoParpadeo 1.4s infinite; }
+        @keyframes rechazoParpadeo { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
 
         /* ── MAIN ── */
         .main { margin-left: var(--sidebar-w); flex: 1; padding: 20px; background: var(--bg); }
