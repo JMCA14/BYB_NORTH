@@ -247,7 +247,7 @@ const _htmlOTGrid = () => {
             </div>
             <input class="fv-search" type="text" placeholder="🔍 Buscar por N° OT o empresa..."
                 value="${window._fotosVista.q || ''}"
-                oninput="window._fotosVistaNav({q:this.value,otIdx:null,areaKey:null})">
+                oninput="window._fotosVistaBuscar(this.value)">
             <div class="fv-grid">${cards}</div>
         </div>`;
 };
@@ -402,6 +402,17 @@ export const renderVistaFotos = (mount) => {
     window._fotosVista.otIdx   = null;
     window._fotosVista.areaKey = null;
     _renderCurrent();
+};
+
+// Filtrado en vivo de las cards sin re-renderizar (no pierde foco al escribir)
+window._fotosVistaBuscar = (q) => {
+    window._fotosVista.q = q || '';
+    const texto = (q || '').toLowerCase();
+    const grid = document.querySelector('.fv-grid');
+    if (!grid) return;
+    grid.querySelectorAll('.fv-card').forEach(card => {
+        card.style.display = card.textContent.toLowerCase().includes(texto) ? '' : 'none';
+    });
 };
 
 console.log('✅ fotos_vista.js — Galería de fotos lista');
