@@ -1,0 +1,22 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "chat_byb": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "perfiles_byb": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "config_byb": {
+      ".read": false,
+      ".write": false,
+      "dropbox_token": {
+        ".read": false,
+        ".write": false
+      }
+    }
+  }
+}

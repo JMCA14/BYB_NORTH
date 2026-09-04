@@ -885,6 +885,73 @@ window.descargarInforme = async (i) => {
     const _relsArr    = [];
     const _extraFotos = {};
 
+    // ── ANEXO DE FOTOS: todas las fotos de la OT agrupadas por
+    // proceso/componente, hasta 10 por grupo, al final del informe. ──
+    const _ANEXO_ETIQUETAS = {
+        ingreso: '📥 Ingreso / Recepción',
+        recepcion: '📥 Recepción',
+        desarme: '🔧 Desarme',
+        desarme_mant: '🔧 Desarme / Mantención',
+        mantenimiento: '🧰 Mantención',
+        mantencion: '🧰 Mantención',
+        mantencion_generales: '🧰 Mantención (Generales)',
+        calidad: '🔬 Control Calidad',
+        mediciones_ing: '📊 Mediciones de Ingreso',
+        mediciones_generales: '📊 Mediciones (Generales)',
+        metrologia_generales: '📏 Metrología (Generales)',
+        mecanica_generales: '⚙️ Mecánica (Generales)',
+        bobinado_mediciones: '🌀 Bobinado - Mediciones',
+        bobinado_devanado: '🌀 Bobinado - Devanado',
+        bobinado_generales: '🌀 Bobinado (Generales)',
+        balanceo: '⚖️ Balanceo',
+        balanceo_generales: '⚖️ Balanceo (Generales)',
+        armado: '🔩 Armado',
+        armado_bal: '🔩 Balanceo / Armado',
+        pruebas: '🧪 Pruebas Dinámicas',
+    };
+    const _anexoEtiqueta = (etapa) => _ANEXO_ETIQUETAS[etapa] ||
+        ('📁 ' + etapa.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())).replace('Fotos B64 ', '');
+
+    const _anexoFotos = () => {
+        let html = '';
+        const claves = Object.keys(d).filter(k => k.startsWith('fotos_b64_') || k.startsWith('fotos_'));
+        let totalAnexo = 0;
+        claves.forEach(k => {
+            const etapa = k.replace(/^fotos_b64_/, '').replace(/^fotos_/, '');
+            const val = d[k];
+            let grupos = []; // [{titulo, fotos:[...]}]
+            if (Array.isArray(val) && val.length > 0) {
+                grupos = [{ titulo: _anexoEtiqueta(etapa), fotos: val }];
+            } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+                Object.entries(val).forEach(([comp, arr]) => {
+                    if (Array.isArray(arr) && arr.length > 0) {
+                        const compLabel = (typeof comp === 'string' && comp.length > 40)
+                            ? comp.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')
+                            : comp;
+                        grupos.push({
+                            titulo: _anexoEtiqueta(etapa) + ' — ' + compLabel,
+                            fotos: arr,
+                        });
+                    }
+                });
+            }
+            grupos.forEach(g => {
+                const fotos = g.fotos.slice(0, 10);
+                if (fotos.length === 0) return;
+                totalAnexo += fotos.length;
+                // 3 por fila, 5.5cm x 4cm, legibles y con pie de foto
+                const bloque = _bloqFotos(fotos, _extraFotos, _relsArr, _rIdCounter, (n) => 'Foto ' + (n + 1));
+                if (!bloque) return;
+                html += `<w:p><w:pPr><w:spacing w:before="120" w:after="20" w:line="240" w:lineRule="auto"/><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="1A3A5C"/><w:sz w:val="22"/></w:rPr><w:t xml:space="preserve">${xE(g.titulo)}</w:t></w:r><w:r><w:rPr><w:color w:val="888888"/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">  (${fotos.length} foto${fotos.length !== 1 ? 's' : ''})</w:t></w:r></w:p>` + SP(0) + bloque + SP(0);
+            });
+        });
+        if (totalAnexo === 0) return '';
+        return `<w:p><w:pPr><w:spacing w:before="240" w:after="20" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="004F88"/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve">ANEXO DE FOTOGRAFÍAS</w:t></w:r></w:p>`
+            + SP(0)
+            + `<w:p><w:pPr><w:spacing w:after="20" w:line="240" w:lineRule="auto"/><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:color w:val="555555"/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">Todas las fotografías de la orden de trabajo, agrupadas por etapa y componente.</w:t></w:r></w:p>`
+            + html;
+    };
+
     const anioInforme = new Date().getFullYear();
     const body=[
         PORTADA_INFORME(d.ot, d.empresa, anioInforme, d.placa),
@@ -1122,6 +1189,11 @@ window.descargarInforme = async (i) => {
             ['Terminaciones', obs.terminaciones||'', (d.responsables||{}).term_ok||''],
             ['Salida',        obs.salida||'',        (d.responsables||{}).salida_ok||''],
         ],W),
+
+        SP(0),
+
+        // ── ANEXO DE FOTOS (final del informe) ──
+        _anexoFotos(),
 
         SP(0), PIE(),
     ].join('');

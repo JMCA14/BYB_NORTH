@@ -9,6 +9,9 @@ import {
     getAuth, setPersistence, browserLocalPersistence,
     signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+    getFunctions, httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 
 // Config del proyecto NUEVO (byb-north-2).
 const firebaseConfig = {
@@ -25,6 +28,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
+const functions = getFunctions(app);
 
 // Mantiene la sesión de Firebase Auth entre recargas del navegador.
 setPersistence(auth, browserLocalPersistence).catch(e => console.warn('Persistence error:', e));
@@ -52,5 +56,6 @@ export {
     sRef, uploadBytes, getDownloadURL,
     chatMsgRef, chatGrpRef, chatVisRef,
     auth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
-    EMAIL_DOMAIN
+    functions, httpsCallable,
+    EMAIL_DOMAIN, app
 };

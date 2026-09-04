@@ -1,4 +1,6 @@
-import { set, onValue, dbRef, perfilesRef } from "../config/firebase.js";
+import { set, onValue, dbRef, perfilesRef, functions, httpsCallable } from "../config/firebase.js";
+
+window.crearUsuarioFC = httpsCallable(functions, "crearUsuario");
 
 // Guarda los perfiles (nombre, rol, asignaciones) keyeados por UID de
 // Firebase Auth. IMPORTANTE: esta función NUNCA debe escribir el campo
@@ -61,6 +63,8 @@ window.editarUsuario = (idx) => {
     // El campo de contraseña ya no se precarga ni se guarda desde aquí:
     // las contraseñas se gestionan en Firebase Authentication (consola).
     if (document.getElementById('fuPass')) document.getElementById('fuPass').value = '';
+    if (document.getElementById('fuPass')) document.getElementById('fuPass').style.display = 'none';
+    if (document.getElementById('fuPassLabel')) document.getElementById('fuPassLabel').style.display = 'none';
     document.getElementById('fuRol').value = u.rol || 'encargado';
     document.getElementById('formUsuError').textContent = '';
     if (document.getElementById('buscadorOT')) document.getElementById('buscadorOT').value = '';
@@ -83,6 +87,30 @@ window.editarUsuario = (idx) => {
     f.scrollIntoView({behavior:'smooth'});
 };
 
+window.nuevoUsuario = () => {
+    const f = document.getElementById('formUsuario');
+    if (!f) return;
+    f.style.display = 'block';
+    document.getElementById('formUsuTitulo').textContent = 'Nuevo Usuario';
+    document.getElementById('fuIdx').value = -1;
+    document.getElementById('fuNombre').value = '';
+    document.getElementById('fuUsuario').value = '';
+    document.getElementById('fuRol').value = 'tecnico';
+    if (document.getElementById('fuPass')) { document.getElementById('fuPass').value = ''; document.getElementById('fuPass').style.display = 'block'; }
+    if (document.getElementById('fuPassLabel')) document.getElementById('fuPassLabel').style.display = 'block';
+    document.getElementById('formUsuError').textContent = '';
+    if (document.getElementById('buscadorOT')) document.getElementById('buscadorOT').value = '';
+    const lista = document.getElementById('listaOTsForm');
+    if (lista) lista.innerHTML = '';
+    document.querySelectorAll('.chkAreaGen').forEach(c => {
+        c.checked = false;
+        const lbl = c.closest('label');
+        if (lbl) { lbl.style.background = 'white'; lbl.style.borderColor = 'var(--border)'; }
+    });
+    window.toggleAsignaciones();
+    f.scrollIntoView({ behavior: 'smooth' });
+};
+
 window.guardarUsuarioForm = () => {
     const err = document.getElementById('formUsuError');
     const idx = parseInt(document.getElementById('fuIdx').value);
@@ -91,14 +119,6 @@ window.guardarUsuarioForm = () => {
     const rol = document.getElementById('fuRol').value;
 
     if (!nombre || !usuario) { err.textContent = '⚠️ Completa todos los campos.'; return; }
-
-    // Crear usuarios nuevos ya NO se hace desde aquí: requiere crear la
-    // cuenta en Firebase Authentication (consola) primero, para obtener
-    // su UID. Ver instrucciones del administrador.
-    if (idx === -1) {
-        err.textContent = '⚠️ Para crear un usuario nuevo, primero créalo en Firebase Authentication (consola) y luego agrégalo aquí con su UID.';
-        return;
-    }
     if (window.usuarios.find((u, i) => u.usuario === usuario && i !== idx)) { err.textContent = '⚠️ El nombre de usuario ya existe.'; return; }
 
     // Recoger asignaciones {ot, area}
@@ -117,6 +137,34 @@ window.guardarUsuarioForm = () => {
         });
     }
 
+    // ── MODO NUEVO: crear cuenta vía Cloud Function ──
+    if (idx === -1) {
+        const pass = document.getElementById('fuPass').value;
+        if (!pass) { err.textContent = '⚠️ Ingresa la contraseña (mínimo 6 caracteres).'; return; }
+        if (pass.length < 6) { err.textContent = '⚠️ La contraseña debe tener al menos 6 caracteres.'; return; }
+        err.textContent = '⏳ Creando usuario...';
+        console.log('📤 Llamando Cloud Function crearUsuario:', { nombre, usuario, rol });
+        window.crearUsuarioFC({ nombre, usuario, password: pass, rol, activo: true, asignaciones, areaGeneral })
+            .then((res) => {
+                console.log('✅ Usuario creado por Cloud Function:', res.data);
+                err.textContent = '✅ Usuario creado correctamente';
+                setTimeout(() => { document.getElementById('formUsuario').style.display = 'none'; window.render(); }, 800);
+            })
+            .catch((e) => {
+                console.error('❌ Error Cloud Function:', e);
+                const code = e && e.code ? e.code : (e.message || '');
+                const msgs = {
+                    'functions/already-exists': 'Ese usuario ya existe.',
+                    'functions/permission-denied': 'Solo el administrador puede crear usuarios.',
+                    'functions/invalid-argument': e.message || 'Datos inválidos.',
+                    'functions/unauthenticated': 'Debes iniciar sesión.',
+                };
+                err.textContent = '❌ ' + (msgs[code] || (e.message ? e.message.replace('functions/', '') : 'Error creando el usuario'));
+            });
+        return;
+    }
+
+    // ── MODO EDICIÓN: solo actualiza el perfil ──
     const nuevoU = { nombre, usuario, rol, activo: true, asignaciones, areaGeneral };
     window.usuarios[idx] = { ...window.usuarios[idx], ...nuevoU }; // conserva el uid existente
     err.textContent = '⏳ Guardando...';

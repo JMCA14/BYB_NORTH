@@ -15,10 +15,15 @@
 //         import './08_fotos.js';
 // ════════════════════════════════════════════════════════════
 
-// ── CONFIGURACIÓN CLOUDINARY ─────────────────────────────────
-const CLOUD_NAME     = 'dboystolg';
-const UPLOAD_PRESET  = 'fotos_taller';
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+// ── CONFIGURACIÓN DROPBOX ───────────────────────────────────
+// La app sube las fotos vía la Cloud Function "subirFotoDropbox",
+// que guarda el archivo en Dropbox dentro de carpetas por OT y por
+// proceso, y devuelve una URL pública. El token de Dropbox vive en
+// Firebase (config_byb) y NUNCA está en este código.
+//
+// Descripción del flujo:
+//   foto → comprimir en navegador (~60KB) → enviar a Cloud Function
+//   → subir a Dropbox (carpeta byb_norte/ot_<OT>/<proceso>/...) → guardar URL.
 
 // Compresión agresiva para 40+ fotos de celular por OT
 // 4MB foto celular → ~60-80KB después de comprimir
@@ -102,20 +107,18 @@ const comprimirImagen = async (file) => {
     });
 };
 
-// ── 2. SUBIDA A CLOUDINARY ───────────────────────────────────
-const subirACloudinary = async (blob, carpeta) => {
-    const formData = new FormData();
-    formData.append('file', blob, 'foto.jpg');
-    formData.append('upload_preset', UPLOAD_PRESET);
-    formData.append('folder', carpeta);
-
-    const resp = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-    if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error?.message || `Error Cloudinary ${resp.status}`);
-    }
-    const data = await resp.json();
-    return data.secure_url;
+// ── 2. SUBIDA A DROPBOX (vía Cloud Function) ────────────────
+const subirAAlmacen = async (blob, carpeta, nombreFoto) => {
+    // carpeta ejemplo: "byb_norte/ot_123/mecanica" o ".../mecanica/cigueñal"
+    const ext = (nombreFoto || 'foto.jpg').split('.').pop() || 'jpg';
+    const base = (nombreFoto || `foto_${Date.now()}`).replace(/[\/\\]/g, '_').replace(/\.[^.]+$/, '');
+    const nombreFinal = `${base}.${ext}`;
+    const res = await window.subirImagenDropbox({
+        blob,
+        nombre: nombreFinal,
+        ruta: carpeta,
+    });
+    return res.url; // URL pública dl.dropboxusercontent.com (puede ser null si falló el link)
 };
 
 // ── 3. PROCESADOR INTERNO ────────────────────────────────────
@@ -134,7 +137,7 @@ const _procesarYSubir = async (files, i, key, carpeta, maxFotos, progEl) => {
         if (progEl) progEl.textContent = `⏳ ${fi + 1}/${aSubir.length}`;
         try {
             const blob = await comprimirImagen(file);
-            const url  = await subirACloudinary(blob, carpeta);
+            const url  = await subirAAlmacen(blob, carpeta, file.name);
             d[key].push({ url, ext: 'jpeg', nombre: file.name, usuario: window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—' });
             subidas++;
         } catch (e) {
@@ -217,7 +220,7 @@ window.subirFotosComponente = async (i, etapa, clave, inputEl) => {
         if (progEl) progEl.textContent = `⏳ ${fi + 1}/${aSubir.length}`;
         try {
             const blob = await comprimirImagen(file);
-            const url  = await subirACloudinary(blob, folder);
+            const url  = await subirAAlmacen(blob, folder, file.name);
             d[keyP][clave].push({ url, ext: 'jpeg', nombre: file.name, usuario: window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—' });
             subidas++;
         } catch (e) {
@@ -245,9 +248,8 @@ window._agregarFotosNuevaOT = async (inputEl) => {
         if (progEl) progEl.textContent = `⏳ ${fi + 1}/${files.length}`;
         try {
             const blob = await comprimirImagen(files[fi]);
-            // Subir a Cloudinary de inmediato (evita que el blob se invalide)
-            // Usamos carpeta temporal; se moverá al número de OT al crearla
-            const url = await subirACloudinary(blob, `byb_norte/nueva_ot_temp`);
+            // Subir a Dropbox vía Cloud Function (carpeta temporal nueva_ot_temp)
+            const url = await subirAAlmacen(blob, `byb_norte/nueva_ot_temp`, files[fi].name);
             window._fotosNuevaOT.push({ url, ext: 'jpeg', nombre: files[fi].name, usuario: window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—' });
         } catch(e) { console.error('Error foto nueva OT:', e); }
     }

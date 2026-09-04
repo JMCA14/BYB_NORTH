@@ -118,8 +118,12 @@ window.render = () => {
         v.innerHTML = `
         <div class="card">
             <h2>👥 Gestión de Usuarios</h2>
+            <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+                <button class="btn-success" onclick="window.nuevoUsuario()">➕ Nuevo usuario</button>
+                <span style="font-size:0.82em;color:var(--text2);">El admin crea la cuenta directamente (correo + contraseña) sin salir de la app.</span>
+            </div>
             <div style="background:#fff4e5;border:1px solid #ffc178;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:0.88em;color:#7a4a00;">
-                ℹ️ Para crear un usuario nuevo: primero créalo en <strong>Firebase Console → Authentication</strong>, luego agrégalo aquí con "✏️ Editar" usando su UID. La contraseña ya no se gestiona en esta app.
+                ℹ️ Para crear un usuario nuevo: usa el botón <strong>"➕ Nuevo usuario"</strong> y completa los datos. La cuenta y el perfil se crean automáticamente. Para la contraseña se usa el correo <strong>usuario@byb-north-2.app</strong>.
             </div>
             <div style="overflow-x:auto;">
             <table>
@@ -139,6 +143,7 @@ window.render = () => {
                             <option value="admin">👑 Admin</option>
                         </select>
                     </div>
+                    <div class="med-campo"><label>Contraseña <span id="fuPassLabel" style="color:var(--text2);font-weight:400;">(solo crear)</span></label><input type="password" id="fuPass" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
                 </div>
                 <div id="secAreaGeneral" style="display:none;margin-bottom:12px;">
                     <label style="margin-bottom:8px;display:block;font-weight:700;color:#1a2a3a;">🏭 Área General del Taller:</label>
@@ -167,6 +172,19 @@ window.render = () => {
                     <button class="btn-del" onclick="document.getElementById('formUsuario').style.display='none'">Cancelar</button>
                 </div>
                 <p id="formUsuError" style="color:var(--danger);margin-top:8px;"></p>
+            </div>
+            <div id="cardDropbox" style="margin-top:24px;background:#f0f7f3;border:1px solid #bfe3cf;border-radius:8px;padding:18px;">
+                <h3 style="margin:0 0 6px;">☁️ Dropbox — Fotos</h3>
+                <p style="font-size:0.85em;color:var(--text2);margin:0 0 12px;line-height:1.5;">
+                    Las fotos de cada proceso se suben a tu Dropbox (carpetas por OT y por proceso) a través de una Cloud Function.
+                    Para que funcione, pega aquí <b>una sola vez</b> el token de Dropbox. No se guarda en el código ni se sube a GitHub.
+                </p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <input id="dropboxTokenInput" type="password" placeholder="Pega aquí tu token de Dropbox (sl.…)…"
+                        style="flex:1;min-width:250px;padding:10px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:0.9em;outline:none;box-sizing:border-box;">
+                    <button class="btn-success" onclick="window.guardarTokenConfig()">💾 Guardar Token</button>
+                </div>
+                <p id="dropboxConfigMsg" style="font-size:0.85em;margin-top:8px;color:var(--text2);"></p>
             </div>
         </div>`;
         return;
