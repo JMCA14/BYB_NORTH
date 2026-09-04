@@ -31,6 +31,14 @@ const fbTimeout = setTimeout(() => {
     }
 }, 8000);
 
+// Render seguro: NO re-renderiza mientras el usuario está escribiendo en un campo.
+// Cada tecla de un input dispara save() → set() → onValue() → render(), que destruye
+// el input enfocado y pierde el cursor (doble clic / solo una letra / texto al revés).
+const _hayCampoActivo = () => {
+    const ae = document.activeElement;
+    return ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT');
+};
+
 onValue(dbRef, (snapshot) => {
     firebaseConectado = true;
     clearTimeout(fbTimeout);
@@ -38,6 +46,7 @@ onValue(dbRef, (snapshot) => {
     try { localStorage.setItem('taller_byb_backup', JSON.stringify(window.data)); } catch(e) {}
     window.actualizarAlertas();
     window.actualizarInfoUsuario();
+    if (_hayCampoActivo()) return; // el usuario está escribiendo: no destruir su input
     setTimeout(() => { try { window.render(); } catch(e) { console.warn('render error:', e); } }, 0);
 }, (error) => {
     firebaseConectado = true;
@@ -45,6 +54,7 @@ onValue(dbRef, (snapshot) => {
     console.error('Firebase error:', error.message);
     try { window.data = JSON.parse(localStorage.getItem('taller_byb_backup') || '[]'); } catch(e) { window.data = []; }
     window.actualizarAlertas();
+    if (_hayCampoActivo()) return;
     setTimeout(() => { try { window.render(); } catch(e) { console.warn('render error:', e); } }, 0);
 });
 
