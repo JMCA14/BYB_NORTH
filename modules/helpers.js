@@ -120,6 +120,48 @@ window.verDetalle = (i) => {
     modal.style.display = "block";
 };
 
+// ── Proceso de OT: etapas del flujo ─────────────────────────
+const _ORDEN_ETAPAS = ['espera_fecha','desarme','ingresos_pendientes','detalle_pendiente','ejecucion_trabajos','pruebas_dinamicas','terminaciones','check_salida','despacho','entregado'];
+const _ETAPAS_LABEL = [
+    { label: 'Desarme',                 color: '#e67e22' },
+    { label: 'Ingreso / Mediciones',    color: '#8e44ad' },
+    { label: 'Detalle Técnico',         color: '#2980b9' },
+    { label: 'Ejecución de Trabajos',   color: '#16a085' },
+    { label: 'Pruebas Dinámicas',       color: '#27ae60' },
+    { label: 'Terminaciones',           color: '#f39c12' },
+    { label: 'Check de Salida',         color: '#c0392b' },
+    { label: 'Despacho',                color: '#2c3e50' },
+    { label: 'Entregado',               color: '#7f8c8d' },
+];
+
+window.etapaActualLabel = (d) => {
+    if (!d) return '—';
+    if (d.estado === 'entregado') return '✅ Entregado';
+    if (d.estado === 'despacho') return '🚚 Despacho';
+    const idx = _ORDEN_ETAPAS.indexOf(d.estado) - 1;
+    if (idx <= -1) return '⏳ Espera de fecha';
+    const e = _ETAPAS_LABEL[idx] || {};
+    return `▶ ${(e.label || d.estado).toUpperCase()}`;
+};
+
+window._htmlProcesoOT = (d) => {
+    if (!d) return '';
+    const idx = _ORDEN_ETAPAS.indexOf(d.estado) - 1; // -1 = espera fecha, 0..8 = etapas
+    let html = `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">`;
+    _ETAPAS_LABEL.forEach((e, ei) => {
+        const hecho  = idx > ei;
+        const actual = idx === ei;
+        let bg, border, chk, color;
+        if (hecho)    { bg = '#eafaf1';    border = '1.5px solid #27ae60'; chk = '✔'; color = '#1a7a44'; }
+        else if (actual) { bg = '#fff8e1'; border = '2px solid #f39c12';  chk = '▶'; color = '#b9770e'; }
+        else          { bg = '#f5f5f5';    border = '1px solid #dde1e7';  chk = '•'; color = '#999'; }
+        const lbl = actual ? `<b>${e.label}</b>` : e.label;
+        html += `<div style="background:${bg};border:${border};border-radius:20px;padding:3px 9px;font-size:0.73em;font-weight:700;color:${color};white-space:nowrap;">${chk} ${lbl}</div>`;
+    });
+    html += `</div>`;
+    return html;
+};
+
 
 // ── Calcular % avance por OT ──────────────────────────────
 window.calcularAvance = (d) => {
