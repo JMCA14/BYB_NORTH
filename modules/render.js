@@ -80,6 +80,49 @@ window.render = () => {
             html += `<div style="text-align:center;padding:30px;background:#eafaf1;border-radius:10px;"><div style="font-size:2.5em;">✅</div><h3 style="color:#27ae60;margin:8px 0;">¡Sin trabajos pendientes!</h3><p style="color:var(--text2);">Todas las órdenes de trabajo de tu área están al día.</p></div>`;
         }
         html += `</div>`;
+
+        // ── Sección: todos los trabajos del taller (para saber en qué proceso va cada OT) ──
+        const otrasOTs = [...window.data]
+            .filter(d => d.estado !== 'entregado')
+            .sort((a, b) => {
+                if (a.pri === 'urgente' && b.pri !== 'urgente') return -1;
+                if (a.pri !== 'urgente' && b.pri === 'urgente') return 1;
+                return String(a.ot).localeCompare(String(b.ot), undefined, {numeric:true});
+            });
+        if (otrasOTs.length > 0) {
+            let tHtml = `<div class="card" style="margin-top:20px;">
+                <h2>🏭 Todos los trabajos del taller</h2>
+                <p style="color:var(--text2);font-size:0.9em;margin-bottom:16px;">Aquí ves el proceso de cada OT del taller, para saber qué está en camino y en qué etapa va cada trabajo.</p>
+                <div style="overflow-x:auto;"><table><thead><tr>
+                    <th>OT</th><th>Empresa</th><th>Etapa Actual</th><th style="min-width:170px">Proceso</th><th>Avance</th><th>Entrega</th><th>Acción</th>
+                </tr></thead><tbody>`;
+            otrasOTs.forEach(d => {
+                const idxGlobal = window.data.indexOf(d);
+                const miArea = areasUsuario.find(a => window.getOTsPendientesPorArea(a).some(x => String(x.ot) === String(d.ot)));
+                const etapaLabel = window.etapaActualLabel ? window.etapaActualLabel(d) : (d.estado || '').replace(/_/g,' ').toUpperCase();
+                const procesoMini = window._htmlProcesoOT ? window._htmlProcesoOT(d) : '';
+                const hoy = new Date(); hoy.setHours(0,0,0,0);
+                const fOT = d.fecha ? new Date(d.fecha) : null;
+                const dias = fOT ? Math.ceil((fOT - hoy) / 86400000) : null;
+                const colF = dias === null ? 'var(--text2)' : dias < 0 ? 'var(--danger)' : dias <= 3 ? 'var(--warning)' : 'var(--success-dark)';
+                const fechaCell = fOT ? `${fOT.toLocaleDateString('es-CL')}<div style="font-size:0.72em;color:${colF};font-weight:700;">${dias<0?`⚠ Vencida (${Math.abs(dias)}d)`:dias===0?'Hoy':`${dias}d`}</div>` : '—';
+                tHtml += `<tr ${d.pri==='urgente'?'style="background:#fdf3f3;"':''}>
+                    <td><b style="color:var(--accent)">${d.ot}</b>${d.pri==='urgente'?' <span style="color:var(--danger);font-size:0.75em;">🔴</span>':''}</td>
+                    <td>${d.empresa||'—'}</td>
+                    <td><span style="font-weight:700;color:#b9770e;font-size:0.85em;">${etapaLabel}</span></td>
+                    <td>${procesoMini}</td>
+                    <td>${window.barraAvance(window.calcularAvance(d))}</td>
+                    <td style="font-size:0.85em;">${fechaCell}</td>
+                    <td style="white-space:nowrap;">
+                        ${miArea ? `<button class="btn-primary btn-sm" onclick="window.irAOT('${miArea}','${d.ot}')">🔧 Mi área</button>` : ''}
+                        <button class="btn-sm" style="background:#5b6b7c;color:white;" onclick="window.verDetalle(${idxGlobal})" title="Ver detalle">🔍</button>
+                    </td>
+                </tr>`;
+            });
+            tHtml += `</tbody></table></div></div>`;
+            html += tHtml;
+        }
+
         v.innerHTML = html;
         return;
     }
@@ -600,6 +643,7 @@ window.render = () => {
             if (UI) {
                 const estadoActual = d.estado.replace(/_/g, ' ').toUpperCase();
                 const estaAbierto = window.acordeonesAbiertos.has(String(d.ot));
+                const procesoHtml = window._htmlProcesoOT ? window._htmlProcesoOT(d) : '';
                 html += `
                     <div class="ot-accordion-container">
                         <button class="accordion${estaAbierto?' active':''}" data-ot-id="${d.ot}" onclick="toggleAccordion(event)">
@@ -612,6 +656,7 @@ window.render = () => {
                         </button>
                         <div class="panel${estaAbierto?' show':''}">
                             <div class="panel-content">
+                                ${procesoHtml ? `<div style="margin-bottom:14px;">${procesoHtml}</div>` : ''}
                                 ${UI}
                             </div>
                         </div>
