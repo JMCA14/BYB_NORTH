@@ -9,6 +9,8 @@ let _conversacionActiva = null;   // { id, nombre, tipo }
 let _grupos = {};                 // <grupoId> -> dato + último mensaje
 let _msgCache = {};               // <convId> -> array mensajes
 let _ult = {};                    // <convId> -> último mensaje {texto,nombre,ts,de}
+let _leidoCache = {};             // <convId> -> { <uid>: { ts } }
+const _escuchadas = {};           // <convId> -> true (para no duplicar listeners)
 
 const _me = () => window.usuarioActual || null;
 const _nombre = () => (_me() && _me().nombre) || (_me() && _me().usuario) || '—';
@@ -94,15 +96,20 @@ function _cargarGrupos() {
     onValue(fbRef(db, 'chat_byb/grupos'), snap => {
         _grupos = snap.val() || {};
         _refrescarLista();
+        window._actualizarBadgeChat && window._actualizarBadgeChat();
     });
 }
 
 // ── Ampliar lista de conversaciones con directos conocidos ──
 let _directosConocidos = {};
+let _directosLoaded = false;
 function _cargarDirectos() {
+    if (_directosLoaded) return;
+    _directosLoaded = true;
     onValue(fbRef(db, 'chat_byb/directos'), snap => {
         _directosConocidos = snap.val() || {};
         _refrescarLista();
+        window._actualizarBadgeChat && window._actualizarBadgeChat();
     });
 }
 
@@ -128,13 +135,72 @@ function _listaConversaciones() {
     return lista;
 }
 
+// ── Mensajes no leídos ──
+function _noLeidosDe(convId) {
+    const me = _me();
+    if (!me || !convId) return 0;
+    const leidoTs = (_leidoCache[convId] && _leidoCache[convId][me.uid] && _leidoCache[convId][me.uid].ts) || 0;
+    const msgs = _msgCache[convId] || [];
+    return msgs.filter(m => String(m.de) !== String(me.uid) && (Number(m.ts) || 0) > Number(leidoTs)).length;
+}
+
+function _totalNoLeidos() {
+    return _listaConversaciones().reduce((acc, c) => acc + _noLeidosDe(c.id), 0);
+}
+
+// Marcar como leídos los mensajes hasta el último de la conversación
+function _marcarLeido(convId) {
+    const me = _me();
+    if (!me || !convId) return;
+    const msgs = _msgCache[convId] || [];
+    const ultimoTs = msgs.length ? Math.max(...msgs.map(m => Number(m.ts) || 0)) : Date.now();
+    if (!_leidoCache[convId]) _leidoCache[convId] = {};
+    _leidoCache[convId][me.uid] = { ts: ultimoTs };
+    set(fbRef(db, 'chat_byb/leidos/' + convId + '/' + me.uid), { ts: ultimoTs }).catch(()=>{});
+    _refrescarLista();
+}
+
+// Leer mis marcadores de leídos por conversación
+function _cargarLeidos(convId) {
+    onValue(fbRef(db, 'chat_byb/leidos/' + convId), snap => {
+        _leidoCache[convId] = snap.val() || {};
+        _refrescarLista();
+    });
+}
+
+// Contador que se muestra en el botón del sidebar
+window._chatNoLeidos = () => _totalNoLeidos();
+
+// Iniciar escucha de conversaciones en segundo plano (para badge sin entrar al chat)
+window._iniciarEscuchaChat = () => {
+    _cargarGrupos();
+    _cargarDirectos();
+};
+
+// Actualizar el badge del botón 💬 Chat del menú lateral
+window._actualizarBadgeChat = () => {
+    const btn = document.getElementById('menuChat');
+    const n = _totalNoLeidos();
+    if (btn) {
+        const span = btn.querySelector('.chat-badge');
+        if (n > 0) {
+            if (!span) btn.insertAdjacentHTML('beforeend', ` <span class="chat-badge" style="background:#e74c3c;color:#fff;border-radius:50%;padding:1px 7px;font-size:0.8em;margin-left:auto;">${n}</span>`);
+            else span.textContent = n;
+        } else if (span) {
+            span.remove();
+        }
+    }
+};
+
 // ── Render de la lista ──
 function _refrescarLista() {
     const cont = document.getElementById('byb-chat-convlist');
-    if (!cont) return;
     const me = _me();
-    if (!me) { cont.innerHTML = ''; return; }
+    if (!me) return;
     const lista = _listaConversaciones();
+    // Asegurar escucha de mensajes+leídos de todas las conversaciones (para contar no leídos)
+    lista.forEach(c => _escucharMensajes(c.id));
+    if (!cont) { window._actualizarBadgeChat && window._actualizarBadgeChat(); return; }
     if (lista.length === 0) {
         cont.innerHTML = `<div style="color:#8696a0;text-align:center;padding:30px 14px;font-size:0.9em;">Sin conversaciones.<br>Pulsa <b>＋</b> para iniciar un chat.</div>`;
         return;
@@ -144,20 +210,25 @@ function _refrescarLista() {
         const preview = u ? u.texto : '';
         const hora = u ? _fmtHora(u.ts) : '';
         const ini = (c.nombre || '?').trim().charAt(0).toUpperCase();
+        const nl = _noLeidosDe(c.id);
         return `<div class="conv ${_conversacionActiva && _conversacionActiva.id === c.id ? 'activa' : ''}" onclick="window.abrirChat('${c.id}','${esc(c.nombre)}','${c.tipo}')">
             <div class="ava">${esc(ini)}</div>
             <div class="meta">
                 <div class="nom">${esc(c.nombre)} <span style="float:right;color:#8696a0;font-size:0.75em;">${hora}</span></div>
-                <div class="preview">${esc(preview) || '—'}</div>
+                <div class="preview">${esc(preview) || '—'}${nl>0?` <span style="background:#e74c3c;color:#fff;border-radius:10px;padding:1px 7px;font-size:0.72em;font-weight:700;float:right;">${nl}</span>`:''}</div>
             </div>
         </div>`;
     }).join('');
+    window._actualizarBadgeChat && window._actualizarBadgeChat();
 }
 
 // ── Mensajes de una conversación ──
 const _handlers = {};
+const _leidosEscuchados = {};
 function _escucharMensajes(convId) {
-    if (_handlers[convId]) _handlers[convId]();
+    if (_escuchadas[convId]) return;
+    _escuchadas[convId] = true;
+    if (!_leidosEscuchados[convId]) { _leidosEscuchados[convId] = true; _cargarLeidos(convId); }
     _handlers[convId] = onValue(fbRef(db, 'chat_byb/mensajes/' + convId), snap => {
         const val = snap.val() || {};
         _msgCache[convId] = Object.entries(val)
@@ -165,7 +236,11 @@ function _escucharMensajes(convId) {
             .sort((a,b) => (Number(a.ts)||0) - (Number(b.ts)||0));
         if (_ult[convId]) { /* ya se actualiza con ulti */ }
         _refrescarLista();
-        if (_conversacionActiva && _conversacionActiva.id === convId) _renderMensajes();
+        window._actualizarBadgeChat && window._actualizarBadgeChat();
+        if (_conversacionActiva && _conversacionActiva.id === convId) {
+            _renderMensajes();
+            _marcarLeido(convId);
+        }
     });
     // Último mensaje por conversación
     _handlers['ult_' + convId] = onValue(fbRef(db, 'chat_byb/ulti/' + convId), snap => {
@@ -223,6 +298,13 @@ window.enviarMensajeChat = () => {
     const ts = Date.now();
     const convId = _conversacionActiva.id;
     const data = { texto, de: me.uid, nombre: _nombre(), ts };
+    // Todo mensaje en conversación directa registra la conversación para ambos participantes
+    if (convId.startsWith('direct_')) {
+        const mio = convId.replace('direct_', '');
+        const a = mio.slice(0, mio.indexOf('_'));
+        const b = mio.slice(mio.indexOf('_') + 1);
+        if (a && b) set(fbRef(db, 'chat_byb/directos/' + convId), { miembros: { [a]: 1, [b]: 1 }, ts }).catch(()=>{});
+    }
     push(fbRef(db, 'chat_byb/mensajes/' + convId), data).catch(e => alert('Error enviando: ' + e.message));
     set(fbRef(db, 'chat_byb/ulti/' + convId), data).catch(()=>{});
     imm.value = '';
