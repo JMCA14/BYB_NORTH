@@ -612,12 +612,60 @@ window.qcConfirmarRechazo = (i) => {
     const motivo = (window.qcRechazoPanel.motivo || '').trim();
     if (areas.length === 0) { alert('⚠️ Debes marcar al menos un área a inspeccionar.'); return; }
     if (!motivo) { alert('⚠️ Debes escribir el motivo del rechazo.'); return; }
-    d.pruebas_rechaza = { areas, motivo, listas: {} };
+    const autor = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
+    d.pruebas_rechaza = { areas, motivo, listas: {}, autor, fecha: new Date().toLocaleString() };
+    // La OT vuelve a Ejecución de Trabajos y se reinicia el/los pasos de las áreas marcadas
+    // para que el trabajo reaparezca pendiente y el área pueda corregirlo.
+    if (!d.pasos) d.pasos = {};
+    d.pasos.pruebas_ok = false;
+    if (areas.includes('mecanica')) { d.pasos.mec_fin = false; window.reiniciarTrabajosPorArea(d, 'mecanica'); }
+    if (areas.includes('bobinado')) d.pasos.bobinado_fin = false;
+    if (areas.includes('armado_bal')) { d.pasos.armado_ok = false; d.pasos.bal_ok = false; }
+    d.estado = 'ejecucion_trabajos';
     window.save();
     window.render();
     const m = document.getElementById('modalQCRechazo');
     if (m) m.style.display = 'none';
-    alert(`❌ OT rechazada.\n\nÁreas a inspeccionar: ${areas.map(a => window._AREA_RECHAZO_LABEL?.[a]||a).join(', ')}\n\nDeben resolver y reenviar la OT para volver a Pruebas.`);
+    alert(`❌ OT rechazada y enviada de vuelta a Ejecución de Trabajos.\n\nÁreas a inspeccionar: ${areas.map(a => window._AREA_RECHAZO_LABEL?.[a]||a).join(', ')}\n\nCada área verá la OT como trabajo especial de rechazo (con el motivo) para corregirla. Al terminar, deben reenviarla a Pruebas.`);
+};
+
+// Reiniciar el trabajo de un área marcada tras un rechazo (desde su panel)
+window.qcReiniciarArea = (i, area) => {
+    const d = window.data[i];
+    if (!d.pruebas_rechaza?.areas?.includes(area)) return;
+    if (!d.pasos) d.pasos = {};
+    if (area === 'mecanica') { d.pasos.mec_fin = false; window.reiniciarTrabajosPorArea(d, 'mecanica'); }
+    if (area === 'bobinado') d.pasos.bobinado_fin = false;
+    if (area === 'armado_bal') { d.pasos.armado_ok = false; d.pasos.bal_ok = false; }
+    if (area === 'armado_bal') window.reiniciarTrabajosPorArea(d, 'armado_bal');
+    if (d.pruebas_rechaza.listas) {
+        d.pruebas_rechaza.listas[area] = false;
+        d.pruebas_rechaza.listas[area + '_resp'] = '';
+    }
+    d.estado = 'ejecucion_trabajos';
+    window.save(); window.render();
+};
+
+// Reiniciar las tarjetas/trabajos ya finalizados de un área para que puedan rehacerse
+window.reiniciarTrabajosPorArea = (d, area) => {
+    if (area === 'mecanica') {
+        if (d.mec_trab_usuario) {
+            Object.keys(d.mec_trab_usuario).forEach(k => {
+                if (d.mec_trab_usuario[k] && typeof d.mec_trab_usuario[k] === 'object' && d.mec_trab_usuario[k].ok) {
+                    d.mec_trab_usuario[k].ok = false;
+                }
+            });
+        }
+    } else if (area === 'armado_bal') {
+        const chkA = d.check_armado;
+        if (chkA) Object.keys(chkA).forEach(k => { chkA[k] = false; });
+        const chkAO = d.check_armado_obs;
+        if (chkAO) Object.keys(chkAO).forEach(k => { chkAO[k] = ''; });
+        const rod = d.rodamientos_ok;
+        if (rod) Object.keys(rod).forEach(k => { rod[k] = false; });
+        const tareasArmado = d.tareas_armado_checks;
+        if (tareasArmado) Object.keys(tareasArmado).forEach(k => { tareasArmado[k] = false; });
+    }
 };
 
 // Marcar que un área resolvió su parte tras el rechazo (con detalle de correcciones)
@@ -669,6 +717,9 @@ window.qcReenviarAPruebas = (i) => {
     }
     if (!confirm('¿Reenviar esta OT a Pruebas Dinámicas?\n\nLa OT quedará disponible en Control Calidad para una nueva aprobación.')) return;
     delete d.pruebas_rechaza;
+    d.estado = 'pruebas_dinamicas';
+    if (!d.pasos) d.pasos = {};
+    d.pasos.pruebas_ok = false;
     window.save(); window.render();
 };
 
@@ -688,9 +739,13 @@ window._htmlPanelRechazoPruebas = (i, d, miArea) => {
           </div>`
         : '';
     return `<div style="background:#fff5f5;border:2px solid #e74c3c;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
-        <div style="font-weight:800;color:#c0392b;font-size:0.95em;margin-bottom:6px;">❌ OT RECHAZADA EN PRUEBAS DINÁMICAS</div>
+        <div style="font-weight:800;color:#c0392b;font-size:0.95em;margin-bottom:6px;">❌ TRABAJO ESPECIAL — OT RECHAZADA EN PRUEBAS DINÁMICAS</div>
         <div style="font-size:0.85em;color:#555;margin-bottom:4px;"><b>Motivo:</b> ${d.pruebas_rechaza.motivo}</div>
+        <div style="font-size:0.8em;color:#888;margin-bottom:4px;">👤 Rechazó: ${xE(d.pruebas_rechaza.autor || '—')} · 📅 ${xE(d.pruebas_rechaza.fecha || '—')}</div>
         <div style="font-size:0.82em;color:#888;margin-bottom:10px;"><b>Este área debe:</b> ${areaLabel}. Corrige/inspecciona y marca como resuelto.</div>
+        <div style="margin:6px 0 10px 0;display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="window.qcReiniciarArea(${i},'${miArea}')" style="background:#e74c3c;color:white;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:bold;font-size:0.88em;">🔄 Reiniciar trabajo de ${areaLabel}</button>
+        </div>
         ${!listo
             ? `<div style="margin:6px 0 10px 0;">
                 <div style="font-weight:700;font-size:0.85em;color:#1a2a3a;margin-bottom:4px;">📝 Lista de correcciones / trabajos realizados en este área:</div>
@@ -820,6 +875,7 @@ window.guardarOTDatos = (i) => {
     if (m) m.style.display = 'none';
     alert('✅ Datos de la OT actualizados.');
 };
+
 
 
 
