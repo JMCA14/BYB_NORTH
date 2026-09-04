@@ -3,7 +3,7 @@
 // autenticada en el nodo "chat_byb".
 
 import { db } from "../config/firebase.js";
-import { ref as fbRef, push, set, remove, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { ref as fbRef, push, set, onValue, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 let _conversacionActiva = null;   // { id, nombre, tipo }
 let _grupos = {};                 // <grupoId> -> dato + último mensaje
@@ -192,8 +192,13 @@ window._actualizarBadgeChat = () => {
     }
 };
 
-// ── Render de la lista ──
+// ── Render de la lista (con debounce para no re-renderizr en cada mensaje) ──
+let _renderTimer = null;
 function _refrescarLista() {
+    if (_renderTimer) return;
+    _renderTimer = setTimeout(() => { _renderTimer = null; _refrescarListaNow(); }, 120);
+}
+function _refrescarListaNow() {
     const cont = document.getElementById('byb-chat-convlist');
     const me = _me();
     if (!me) return;
@@ -222,19 +227,19 @@ function _refrescarLista() {
     window._actualizarBadgeChat && window._actualizarBadgeChat();
 }
 
-// ── Mensajes de una conversación ──
+// ── Mensajes de una conversación (ligero: últimos 30, para no saturar) ──
 const _handlers = {};
 const _leidosEscuchados = {};
 function _escucharMensajes(convId) {
     if (_escuchadas[convId]) return;
     _escuchadas[convId] = true;
     if (!_leidosEscuchados[convId]) { _leidosEscuchados[convId] = true; _cargarLeidos(convId); }
-    _handlers[convId] = onValue(fbRef(db, 'chat_byb/mensajes/' + convId), snap => {
+    // Escucha acotada: solo los últimos mensajes (para el contador de no leídos)
+    _handlers[convId] = onValue(query(fbRef(db, 'chat_byb/mensajes/' + convId), limitToLast(30)), snap => {
         const val = snap.val() || {};
         _msgCache[convId] = Object.entries(val)
             .map(([mid, m]) => ({ id: mid, ...m }))
             .sort((a,b) => (Number(a.ts)||0) - (Number(b.ts)||0));
-        if (_ult[convId]) { /* ya se actualiza con ulti */ }
         _refrescarLista();
         window._actualizarBadgeChat && window._actualizarBadgeChat();
         if (_conversacionActiva && _conversacionActiva.id === convId) {
@@ -246,6 +251,27 @@ function _escucharMensajes(convId) {
     _handlers['ult_' + convId] = onValue(fbRef(db, 'chat_byb/ulti/' + convId), snap => {
         const u = snap.val();
         if (u) { _ult[convId] = u; _refrescarLista(); }
+    });
+}
+
+// Escucha completa (historial entero) SOLO cuando se abre la conversación
+const _completas = {};
+function _escucharCompleta(convId) {
+    _escucharMensajes(convId);
+    if (_completas[convId]) return;
+    _completas[convId] = true;
+    if (typeof _handlers[convId] === 'function') _handlers[convId]();
+    _handlers[convId] = onValue(fbRef(db, 'chat_byb/mensajes/' + convId), snap => {
+        const val = snap.val() || {};
+        _msgCache[convId] = Object.entries(val)
+            .map(([mid, m]) => ({ id: mid, ...m }))
+            .sort((a,b) => (Number(a.ts)||0) - (Number(b.ts)||0));
+        _refrescarLista();
+        window._actualizarBadgeChat && window._actualizarBadgeChat();
+        if (_conversacionActiva && _conversacionActiva.id === convId) {
+            _renderMensajes();
+            _marcarLeido(convId);
+        }
     });
 }
 
@@ -272,7 +298,7 @@ function _renderMensajes() {
 
 window.abrirChat = (convId, nombre, tipo) => {
     _conversacionActiva = { id: convId, nombre, tipo: tipo || (_conversacionActiva ? _conversacionActiva.tipo : 'directo') };
-    _escucharMensajes(convId);
+    _escucharCompleta(convId);
     _mostrarPaneActivo(true);
     const head = document.getElementById('byb-chat-pane-head');
     if (head) head.innerHTML = `<div class="ava" style="background:#00a884;">${esc((nombre||'?').trim().charAt(0).toUpperCase())}</div><span>${esc(nombre)}</span>`;
