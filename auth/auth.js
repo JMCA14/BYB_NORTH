@@ -176,6 +176,23 @@ window.actualizarInfoUsuario = () => {
     } else if (!esCalidad && btnNuevaOT) {
         btnNuevaOT.remove();
     }
+
+    // ── Botón Chat (visible para todos con sesión) ──
+    let btnChat = document.getElementById('menuChat');
+    if (!btnChat) {
+        const nav = el.closest('nav') || el.parentElement;
+        if (nav) {
+            btnChat = document.createElement('button');
+            btnChat.id = 'menuChat';
+            btnChat.className = 'nav-btn';
+            btnChat.onclick = () => window.mostrarVista('chat');
+            btnChat.style.cssText = 'display:flex;width:100%;text-align:left;padding:10px 16px;border:none;background:rgba(0,168,132,0.18);color:#00e0a8;cursor:pointer;font-weight:700;font-size:0.88em;border-radius:6px;margin:4px 0;transition:background 0.2s;';
+            btnChat.onmouseover = () => btnChat.style.background = 'rgba(0,168,132,0.32)';
+            btnChat.onmouseout  = () => btnChat.style.background = 'rgba(0,168,132,0.18)';
+            btnChat.innerHTML = '💬 Chat';
+            nav.appendChild(btnChat);
+        }
+    }
 };
 
 // ── Cargar lista de perfiles (para el panel de admin). Ya NO contiene

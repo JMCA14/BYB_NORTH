@@ -44,7 +44,8 @@ window.sensorAgregarIngreso = (i) => {
         continuidad: '',
         estado: 'na',
         obs: '',
-        fotos: []
+        fotos: [],
+        usuario: window.usuarioActual?.nombre || window.usuarioActual?.usuario || '-'
     });
     _saveSensores();
     window.render();
@@ -449,7 +450,7 @@ window.tabSensoresIngreso = (d, W = 9026, extraFilesRef, relsArrRef, rIdRef) => 
     if (sensores.length === 0) return '';
 
     const xE    = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const c     = [1400, 1700, 950, 850, 950, W - 1400 - 1700 - 950 - 850 - 950];
+    const c     = [1200, 1300, 800, 800, 850, W - 1200 - 1300 - 800 - 800 - 850 - 1400, 1400];
     const cell  = (w, bg, txt, bold, color) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${bg||'FFFFFF'}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color||'2C3E50'}"/><w:sz w:val="13"/></w:rPr><w:t>${xE(txt)}</w:t></w:r></w:p></w:tc>`;
     const cellL = (w, bg, txt, bold, color) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${bg||'FFFFFF'}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color||'2C3E50'}"/><w:sz w:val="13"/></w:rPr><w:t xml:space="preserve">${xE(txt)}</w:t></w:r></w:p></w:tc>`;
     const row   = (cells, h) => `<w:tr>${h?`<w:trPr><w:trHeight w:val="${h}"/></w:trPr>`:''}${cells}</w:tr>`;
@@ -461,7 +462,8 @@ window.tabSensoresIngreso = (d, W = 9026, extraFilesRef, relsArrRef, rIdRef) => 
         cell(c[2],'1A3A5C','RES. (Ω)',true,'FFFFFF') +
         cell(c[3],'1A3A5C','CONT.',true,'FFFFFF') +
         cell(c[4],'1A3A5C','ESTADO',true,'FFFFFF') +
-        cellL(c[5],'1A3A5C','OBSERVACIÓN',true,'FFFFFF'), 80);
+        cellL(c[5],'1A3A5C','OBSERVACIÓN',true,'FFFFFF') +
+        cell(c[6],'1A3A5C','TÉCNICO',true,'FFFFFF'), 80);
 
     let result = `<w:tbl><w:tblPr><w:tblW w:w="${tot}" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="2" w:color="B0C8E8"/><w:left w:val="single" w:sz="2" w:color="B0C8E8"/><w:bottom w:val="single" w:sz="2" w:color="B0C8E8"/><w:right w:val="single" w:sz="2" w:color="B0C8E8"/><w:insideH w:val="single" w:sz="1" w:color="DDE1E7"/><w:insideV w:val="single" w:sz="1" w:color="DDE1E7"/></w:tblBorders></w:tblPr><w:tblGrid>${c.map(col=>`<w:gridCol w:w="${col}"/>`).join('')}</w:tblGrid>${header}`;
 
@@ -477,7 +479,8 @@ window.tabSensoresIngreso = (d, W = 9026, extraFilesRef, relsArrRef, rIdRef) => 
             cell(c[2], bg, s.resistencia||'—', false, '2C3E50') +
             cell(c[3], bg, txtCont, false, s.continuidad==='si'?'27AE60':s.continuidad==='no'?'E74C3C':'888888') +
             cell(c[4], bgEst, txtEst, true, colEst) +
-            cellL(c[5], bg, s.obs||'—', false, '555555')
+            cellL(c[5], bg, s.obs||'—', false, '555555') +
+            cell(c[6], 'EAF0FF', s.usuario||'—', false, '1a2a6a')
         );
         // Agregar fila de fotos si hay fotos y tenemos acceso al sistema de fotos
         const fotos = s.fotos || [];
@@ -501,7 +504,7 @@ window.tabSensoresSalida = (d, W = 9026, extraFilesRef, relsArrRef, rIdRef) => {
     if (sensoresIng.length === 0) return '';
 
     const xE    = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const c     = [1400, 1700, 950, 850, 950, W - 1400 - 1700 - 950 - 850 - 950];
+    const c     = [1200, 1300, 800, 800, 850, W - 1200 - 1300 - 800 - 800 - 850 - 1400, 1400];
     const cell  = (w, bg, txt, bold, color) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${bg||'FFFFFF'}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color||'2C3E50'}"/><w:sz w:val="13"/></w:rPr><w:t>${xE(txt)}</w:t></w:r></w:p></w:tc>`;
     const cellL = (w, bg, txt, bold, color) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${bg||'FFFFFF'}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color||'2C3E50'}"/><w:sz w:val="13"/></w:rPr><w:t xml:space="preserve">${xE(txt)}</w:t></w:r></w:p></w:tc>`;
     const row   = (cells, h) => `<w:tr>${h?`<w:trPr><w:trHeight w:val="${h}"/></w:trPr>`:''}${cells}</w:tr>`;
@@ -513,7 +516,8 @@ window.tabSensoresSalida = (d, W = 9026, extraFilesRef, relsArrRef, rIdRef) => {
         cell(c[2],'1A6B2E','RES. SAL. (Ω)',true,'FFFFFF') +
         cell(c[3],'1A6B2E','CONT. SAL.',true,'FFFFFF') +
         cell(c[4],'1A6B2E','ESTADO SAL.',true,'FFFFFF') +
-        cellL(c[5],'1A6B2E','OBS. SALIDA',true,'FFFFFF'), 80);
+        cellL(c[5],'1A6B2E','OBS. SALIDA',true,'FFFFFF') +
+        cell(c[6],'1A6B2E','TÉCNICO',true,'FFFFFF'), 80);
 
     let result = `<w:tbl><w:tblPr><w:tblW w:w="${tot}" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="2" w:color="A0D8B0"/><w:left w:val="single" w:sz="2" w:color="A0D8B0"/><w:bottom w:val="single" w:sz="2" w:color="A0D8B0"/><w:right w:val="single" w:sz="2" w:color="A0D8B0"/><w:insideH w:val="single" w:sz="1" w:color="DDE1E7"/><w:insideV w:val="single" w:sz="1" w:color="DDE1E7"/></w:tblBorders></w:tblPr><w:tblGrid>${c.map(col=>`<w:gridCol w:w="${col}"/>`).join('')}</w:tblGrid>${header}`;
 
@@ -530,7 +534,8 @@ window.tabSensoresSalida = (d, W = 9026, extraFilesRef, relsArrRef, rIdRef) => {
             cell(c[2], bg, sal.resistencia||'—', false, '2C3E50') +
             cell(c[3], bg, txtCont, false, sal.continuidad==='si'?'27AE60':sal.continuidad==='no'?'E74C3C':'888888') +
             cell(c[4], bgEst, txtEst, true, colEst) +
-            cellL(c[5], bg, sal.obs||'—', false, '555555')
+            cellL(c[5], bg, sal.obs||'—', false, '555555') +
+            cell(c[6], 'EAF0FF', s.usuario||'—', false, '1a2a6a')
         );
         // Fotos de salida
         const fotos = fotosSal[si] || [];

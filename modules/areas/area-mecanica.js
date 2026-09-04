@@ -282,7 +282,7 @@ window.renderAreaMecanica = function(i, d, obs, p) {
                                 onchange="if(!window.data[${i}].tareas_mecanica_ing_checks) window.data[${i}].tareas_mecanica_ing_checks={};
                                           window.data[${i}].tareas_mecanica_ing_checks[${ti}]=this.checked;
                                           window.save();">
-                            <span style="font-size:0.87em;${(d.tareas_mecanica_ing_checks||{})[ti]?'text-decoration:line-through;color:#888;':''}">${item}</span>
+                            <span style="font-size:0.87em;${(d.tareas_mecanica_ing_checks||{})[ti]?'text-decoration:line-through;color:#888;':''}">${item}${(d.tareas_mecanica_ing_autor&&d.tareas_mecanica_ing_autor[ti])?` <span style="font-size:0.75em;color:#5a6a8a;">👤 ${d.tareas_mecanica_ing_autor[ti]}</span>`:''}</span>
                         </label>
                         <button onclick="window.quitarTarea('mecanica_ing',${i},${ti})" style="background:none;border:none;color:#e74c3c;cursor:pointer;padding:0 4px;">✕</button>
                     </div>`).join('')}
@@ -441,7 +441,7 @@ window.renderAreaMecanica = function(i, d, obs, p) {
                                 onchange="if(!window.data[${i}].tareas_mecanica_checks) window.data[${i}].tareas_mecanica_checks={};
                                           window.data[${i}].tareas_mecanica_checks[${ti}]=this.checked;
                                           window.save();">
-                            <span style="font-size:0.87em;${(d.tareas_mecanica_checks||{})[ti]?'text-decoration:line-through;color:#888;':''}">${item}</span>
+                            <span style="font-size:0.87em;${(d.tareas_mecanica_checks||{})[ti]?'text-decoration:line-through;color:#888;':''}">${item}${(d.tareas_mecanica_autor&&d.tareas_mecanica_autor[ti])?` <span style="font-size:0.75em;color:#5a6a8a;">👤 ${d.tareas_mecanica_autor[ti]}</span>`:''}</span>
                         </label>
                         <button onclick="window.quitarTarea('mecanica',${i},${ti})" style="background:none;border:none;color:#e74c3c;cursor:pointer;padding:0 4px;">✕</button>
                     </div>`).join('')}

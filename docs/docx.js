@@ -44,52 +44,66 @@ const loadJSZip = () => { if(window.JSZip) return Promise.resolve(window.JSZip);
         };
 
 
-        // ─ tabMetroPlanillaCombinada: Entrada+Salida en una tabla (4 columnas) ─
-        const tabMetroPlanillaCombinada = (d, prefijo_ing, prefijo_sal, titulo, W=9026) => {
-            const c1=1800, c2=2208, c3=2208, c4=1810;
-            const tot = c1+c2+c3+c4;
+        // ─ tabMetroPlanillaCombinada: Ingreso + Salida (5 columnas) con ESTADO a nivel sección ─
+        const tabMetroPlanillaCombinada = (d, prefijo_ing, prefijo_sal, titulo, W=9026, seccion='') => {
+            const c1=1700, c2=1700, c3=1200, c4=1700, c5=1200;
+            const tot = c1+c2+c3+c4+c5;
             const DIAMS = ['1-A','1-B','1-C','1-D','2-A','2-B','2-C','2-D','3-A','3-B','3-C','3-D'];
+            const rawSt = (seccion && d.metro_state && d.metro_state[seccion] != null && d.metro_state[seccion] !== '') ? d.metro_state[seccion] : '';
+            const stSec = (typeof rawSt === 'object') ? (Object.values(rawSt).includes('malo') ? 'malo' : Object.values(rawSt).includes('encamisado') ? 'encamisado' : Object.values(rawSt).includes('metalado') ? 'metalado' : Object.values(rawSt).includes('rectificado') ? 'rectificado' : Object.values(rawSt).includes('bueno') ? 'bueno' : '') : rawSt;
+            const stTxt = (v) => v==='bueno' ? '✓ BUENO' : v==='malo' ? '✗ MALO' : v==='encamisado' ? 'ENCAMISADO' : v==='metalado' ? 'METALADO' : v==='rectificado' ? 'RECTIFICADO' : 'SIN DEFINIR';
+            const stClr = (v) => v==='bueno' ? '27AE60' : v==='malo' ? 'E74C3C' : v==='encamisado' ? 'E67E22' : v==='metalado' ? '8E44AD' : v==='rectificado' ? '2980B9' : '888888';
             const filas = DIAMS.map(dm => {
-                const ki  = prefijo_ing+'_d'+dm.replace('-','');
-                const ks  = prefijo_sal+'_d'+dm.replace('-','');
-                const kia = prefijo_ing+'_d'+dm.replace('-','')+'_aj';
-                const vi  = d[ki]  || '—';
-                const vs  = d[ks]  || vi;   // si no hay salida, repetir ingreso
-                const aj  = d[kia] || (d[prefijo_sal+'_d'+dm.replace('-','')+'_aj']) || '—';
+                const kiIng   = prefijo_ing+'_d'+dm.replace('-','');
+                const kiIngAj = prefijo_ing+'_d'+dm.replace('-','')+'_aj';
+                const kiSal   = prefijo_sal+'_d'+dm.replace('-','');
+                const kiSalAj = prefijo_sal+'_d'+dm.replace('-','')+'_aj';
+                const vi   = d[kiIng]   || '—';
+                const via  = d[kiIngAj] || '—';
+                const vs   = d[kiSal]   || '';
+                const vsa  = d[kiSalAj] || '';
                 return TR([
-                    TC(c1,'F5F5F5', R('Diámetro '+dm,11,'333333'), false),
-                    TC(c2,'FFFFFF', R(vi+(vi==='—'?'':' mm'),11,'2C3E50'), false),
-                    TC(c3,'FFFFFF', R(vs+(vs==='—'?'':' mm'),11,'2C3E50'), false),
-                    TC(c4,'FFFFFF', R(aj,11,'2C3E50',true), true),
+                    TC(c1,'F5F5F5', R('Diámetro '+dm,10,'333333'), false),
+                    TC(c2,'F5F5F5', R(vi+(vi==='—'?'':' mm'),10,'666666'), false),
+                    TC(c3,'F5F5F5', R(via,10,'666666'), false),
+                    TC(c4,'FFFFFF', R(vs+(vs==='—'?'':' mm'),10,'2C3E50'), false),
+                    TC(c5,'FFFFFF', R(vsa,10,'2C3E50'), false),
                 ]);
             });
-            // Tolerancia y conclusión — usar salida si existe, si no ingreso
             const pref = d[prefijo_sal+'_tol_min'] ? prefijo_sal : prefijo_ing;
             const tolMin  = d[pref+'_tol_min'] || '—';
             const tolMax  = d[pref+'_tol_max'] || '—';
             const concI   = d[prefijo_ing+'_conc'] || '';
             const concS   = d[prefijo_sal+'_conc'] || concI;
-            const concTxt = (conc) => conc==='dentro' ? '✓ Dentro de tolerancia' : conc==='fuera' ? '✗ Fuera de tolerancia' : '—';
+            const concTxt = (conc) => conc==='dentro' ? '✓ Dentro' : conc==='fuera' ? '✗ Fuera' : '—';
             const concClr = (conc) => conc==='dentro' ? '27AE60' : conc==='fuera' ? 'E74C3C' : '888888';
-            return TABLA([c1,c2,c3,c4],[
-                TR([TC(tot,'1A3A5C', R(titulo,12,'FFFFFF',true), false, 4)]),
+            return TABLA([c1,c2,c3,c4,c5],[
+                TR([TC(tot,'1A3A5C', R(titulo,11,'FFFFFF',true), false, 5)]),
                 TR([
-                    TC(c1,'D5E3F0', R('Parámetro',11,'003366',true),false),
-                    TC(c2,'D5E3F0', R('Valores de Entrada',11,'003366',true),false),
-                    TC(c3,'D5E3F0', R('Valores de Salida',11,'003366',true),false),
-                    TC(c4,'D5E3F0', R('Unidad de ajuste',11,'003366',true),true),
+                    TC(c1,'D5E3F0', R('Parámetro',10,'003366',true),false),
+                    TC(c2,'D5E3F0', R('Entrada (mm)',10,'003366',true),false),
+                    TC(c3,'D5E3F0', R('Ajuste Entr.',10,'003366',true),false),
+                    TC(c4,'D5E3F0', R('Salida (mm)',10,'003366',true),false),
+                    TC(c5,'D5E3F0', R('Ajuste Sal.',10,'003366',true),false),
                 ]),
                 ...filas,
                 TR([
-                    TC(c1,'EBEBEB', R('Tolerancia de ajuste',11,'333333',true),false),
-                    TC(c2,'FFFFFF', R('± '+tolMin,11,'2C3E50'),false),
-                    TC(c3,'FFFFFF', R('+ '+tolMax,11,'2C3E50'),false),
-                    TC(c4,'FFFFFF', R('',11,'FFFFFF'),false),
+                    TC(c1,'EBEBEB', R('Tol. ajuste',10,'333333',true),false),
+                    TC(c2,'F5F5F5', R('—',10,'888888'),false),
+                    TC(c3,'F5F5F5', R('—',10,'888888'),false),
+                    TC(c4,'FFFFFF', R('± '+tolMin,10,'2C3E50'),false),
+                    TC(c5,'FFFFFF', R('+ '+tolMax,10,'2C3E50'),false),
                 ]),
                 TR([
-                    TC(c1,'EBEBEB', R('Conclusión',11,'333333',true),false),
-                    TC(c2, concI==='dentro'?'E8F8F0':concI==='fuera'?'FFF5F5':'F8F8F8', R(concTxt(concI),11,concClr(concI),true),false),
-                    TC(c3+c4, concS==='dentro'?'E8F8F0':concS==='fuera'?'FFF5F5':'F8F8F8', R(concTxt(concS),11,concClr(concS),true),false,2),
+                    TC(c1,'EBEBEB', R('Conclusión',10,'333333',true),false),
+                    TC(c2,'F5F5F5', R(concI==='dentro'?'✓ Dentro':concI==='fuera'?'✗ Fuera':'—',10,concI==='dentro'?'27AE60':concI==='fuera'?'E74C3C':'888888'),false),
+                    TC(c3,'F5F5F5', R('',10,'FFFFFF'),false),
+                    TC(c4, concS==='dentro'?'E8F8F0':concS==='fuera'?'FFF5F5':'F8F8F8', R(concTxt(concS),10,concClr(concS),true),false),
+                    TC(c5,'FFFFFF', R('',10,'FFFFFF'),false),
+                ]),
+                TR([
+                    TC(c1,'EBEBEB', R('ESTADO DE LA SECCIÓN',11,'333333',true),false),
+                    TC(c2+c3+c4+c5, stSec ? (stSec==='bueno'?'E8F8F0':stSec==='malo'?'FFF5F5':'FDF3E3') : 'F8F8F8', R(stTxt(stSec),12,stClr(stSec),true), true, 4),
                 ]),
             ]);
         };
@@ -152,15 +166,16 @@ const loadJSZip = () => { if(window.JSZip) return Promise.resolve(window.JSZip);
                 ...(d.rod_ll ? [{pos:'LL', mod:d.rod_ll, ok:d.rod_ll_ok}] : []),
             ];
             if (!lista.length) return TABLA([W],[TR([TD('(Sin rodamientos registrados)',W)])]);
-            const c=[1500,5526,2000];
+            const c=[1300,3826,1900,2000];
             return TABLA(c,[
-                TR([TH('POSICIÓN',c[0]),TH('MODELO',c[1]),TH('ESTADO',c[2])]),
+                TR([TH('POSICIÓN',c[0]),TH('MODELO',c[1]),TH('TÉCNICO',c[2]),TH('ESTADO',c[3])]),
                 ...lista.map((r,ri)=>{
                     const ok = r.ok !== undefined ? r.ok : !!rodChecks[ri];
                     return TR([
                         TC(c[0],'E8F0FA',R(r.pos||'—',13,'004F88',true),true),
                         TC(c[1],'FFFFFF',R(r.mod||'—',13,'2C3E50'),false),
-                        TC(c[2],ok?'E8F8F0':'FFF5F5',R(ok?'✅ Instalado':'Pendiente',13,ok?'27AE60':'E74C3C',true),true),
+                        TC(c[2],'EAF0FF',R(r.u||'—',13,'1a2a6a'),false),
+                        TC(c[3],ok?'E8F8F0':'FFF5F5',R(ok?'✅ Instalado':'Pendiente',13,ok?'27AE60':'E74C3C',true),true),
                     ]);
                 })
             ]);
@@ -499,21 +514,34 @@ const loadJSZip = () => { if(window.JSZip) return Promise.resolve(window.JSZip);
         };
 
         // Tabla lista de texto simple (hallazgos, terminaciones)
-        const tabLista = (items,W=9026) => {
+        const tabLista = (items,W=9026,autores) => {
             if(!items||items.length===0) return TABLA([W],[TR([TD('(Sin registros)',W)])]);
-            return TABLA([W],items.map(item=>TR([TC(W,'FFFFFF',`<w:r><w:rPr>${CAL(16,'2C3E50')}</w:rPr><w:t xml:space="preserve">• ${xE(item)}</w:t></w:r>`,false)])));
+            return TABLA([W],items.map((item,ri)=>{
+                const au = autores ? (autores[ri]||'') : (item && typeof item==='object' ? (item.u||'') : '');
+                const txt = (item && typeof item==='object' && item.t!=null) ? item.t : item;
+                const celd = au
+                    ? `<w:r><w:rPr>${CAL(16,'2C3E50')}</w:rPr><w:t xml:space="preserve">• ${xE(txt)}</w:t></w:r><w:r><w:rPr>${CAL(15,'1a2a6a')}</w:rPr><w:t xml:space="preserve">  (👤 ${xE(au)})</w:t></w:r>`
+                    : `<w:r><w:rPr>${CAL(16,'2C3E50')}</w:rPr><w:t xml:space="preserve">• ${xE(txt)}</w:t></w:r>`;
+                return TR([TC(W,'FFFFFF',celd,false)]);
+            }));
         };
 
         // Tabla terminaciones con estado check
-        const tabTerminaciones = (items,checks,W=9026) => {
+        const tabTerminaciones = (items,checks,W=9026,autores) => {
             if(!items||items.length===0) return TABLA([W],[TR([TD('(Sin terminaciones registradas)',W)])]);
             const c=[500,W-500];
+            const celdaItem = (item,ti) => {
+                const au = autores ? (autores[ti]||'') : '';
+                const base = `<w:r><w:rPr>${CAL(16,'2C3E50')}</w:rPr><w:t xml:space="preserve">${xE(item)}</w:t></w:r>`;
+                const autor = au ? `<w:r><w:rPr>${CAL(15,'1a2a6a')}</w:rPr><w:t xml:space="preserve">  (👤 ${xE(au)})</w:t></w:r>` : '';
+                return TC(c[1],'FFFFFF',base+autor,false);
+            };
             return TABLA(c,[
                 TR([TH('',c[0]),TH('ÍTEM',c[1],false)]),
                 ...items.map((item,ti)=>TR([
                     TC(c[0],checks&&checks[ti]?'E8F8F0':'FFFFFF',
                        `<w:r><w:rPr>${CAL(16,checks&&checks[ti]?'27AE60':'888888',true)}</w:rPr><w:t>${checks&&checks[ti]?'☑':'☐'}</w:t></w:r>`,true),
-                    TD(item,c[1])
+                    celdaItem(item,ti)
                 ]))
             ]);
         };
@@ -689,21 +717,20 @@ window.descargarDetalle = async (i) => {
         tabPlaca(d,W), SP(0),
 
         SECC('2.  HALLAZGOS DEL DESARME'), RESP((d.responsables||{}).desarme_ok), SP(0),
-        tabLista(hallazgos,W), SP(0),
+        tabLista(hallazgos,W,d.hallazgos_autor), SP(0),
         F2W('OBSERVACIONES DESARME', obs.desarme||'', W), SP(0),
 
         SECC('3.  MEDICIONES ELÉCTRICAS DE INGRESO'), RESP((d.responsables||{}).med_ok), SP(0),
         tabMedElec(medIng,W), SP(0),
 
         SECC('4.  METROLOGÍA MECÁNICA'), RESP((d.responsables||{}).met_ok), SP(0),
-        tabMetro(
-            {enc_lc:d.met_val_lc,enc_ll:d.met_val_ll,me_lc:d.met_val_mlc,me_ll:d.met_val_mll},
-            {enc_lc:'',enc_ll:'',me_lc:'',me_ll:''},W), SP(0),
-        SECC('4b. CONTROL METROLÓGICO DE ALOJAMIENTOS Y ASENTAMIENTOS'), SP(0),
-        tabMetroPlanillaCombinada(d,'metro_aloj_lc_ing','metro_aloj_lc_sal','ALOJAMIENTO LADO CARGA (Drive End)',W), SP(0),
-        tabMetroPlanillaCombinada(d,'metro_aloj_ll_ing','metro_aloj_ll_sal','ALOJAMIENTO LADO LIBRE (Non Drive End)',W), SP(0),
-        tabMetroPlanillaCombinada(d,'metro_asen_lc_ing','metro_asen_lc_sal','ASENTAMIENTO LADO CARGA (Drive End)',W), SP(0),
-        tabMetroPlanillaCombinada(d,'metro_asen_ll_ing','metro_asen_ll_sal','ASENTAMIENTO LADO LIBRE (Non Drive End)',W), SP(0),
+        SECC('4b. CONTROL METROLÓGICO (ALOJAMIENTOS, ASENTAMIENTOS Y EJES)'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_aloj_lc_ing','metro_aloj_lc_sal','ALOJAMIENTO LADO CARGA (Drive End)',W,'aloj_lc'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_aloj_ll_ing','metro_aloj_ll_sal','ALOJAMIENTO LADO LIBRE (Non Drive End)',W,'aloj_ll'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_asen_lc_ing','metro_asen_lc_sal','ASENTAMIENTO LADO CARGA (Drive End)',W,'asen_lc'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_asen_ll_ing','metro_asen_ll_sal','ASENTAMIENTO LADO LIBRE (Non Drive End)',W,'asen_ll'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_eje_lc_ing','metro_eje_lc_sal','EJE LADO CARGA (Drive End)',W,'eje_lc'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_eje_ll_ing','metro_eje_ll_sal','EJE LADO LIBRE (Non Drive End)',W,'eje_ll'), SP(0),
         F2W('OBSERVACIONES METROLOGÍA', obs.metrologia||'', W), SP(0),
 
         SECC('5.  RODAMIENTOS'), SP(0),
@@ -885,16 +912,16 @@ window.descargarInforme = async (i) => {
 
         // ── 4. DESARME ──
         SECC('4.  DESARME'), RESP((d.responsables||{}).desarme_ok), SP(0),
-        tabLista(hallazgos,W), SP(0),
+        tabLista(hallazgos,W,d.hallazgos_autor), SP(0),
         (()=>{
             const chk = tabCheckDesarme(d.check_desarme, d.check_desarme_obs, d.check_desarme_resp, d.fotos_b64_desarme||{}, _extraFotos, _relsArr, _rIdCounter, W)
             return SECC('    CHECK DE DESARME') + SP(0) + chk + SP(0);
         })(),
         tarDesarme.length>0 ? SECC('    TAREAS DE DESARME') : '',
-        tarDesarme.length>0 ? tabLista(tarDesarme,W) : '',
+        tarDesarme.length>0 ? tabLista(tarDesarme,W,d.tareas_desarme_autor) : '',
         tarMant.length>0 ? SECC('    TAREAS DE MANTENCIÓN') : '',
         RESP((d.responsables||{}).mant_ok),
-        tarMant.length>0 ? tabLista(tarMant,W) : '',
+        tarMant.length>0 ? tabLista(tarMant,W,d.tareas_mantencion_autor) : '',
         (()=>{ const f=_bloqFotosGenerales(d.fotos_b64_mantencion_generales||[], _extraFotos, _relsArr, _rIdCounter); return f ? (SECC('    FOTOGRAFÍAS GENERALES MANTENCIÓN')+SP(0)+f+SP(0)) : ''; })(),
         (()=>{
             const chkM = tabCheckComponentes(d.check_desarme, d.check_mantencion, d.check_mantencion_obs, d.check_mantencion_resp, 'Mantención', d.fotos_b64_mantencion||{}, _extraFotos, _relsArr, _rIdCounter, W);
@@ -910,19 +937,21 @@ window.descargarInforme = async (i) => {
         (()=>{ const f=_bloqFotosGenerales(d.fotos_b64_mediciones_ing||[], _extraFotos, _relsArr, _rIdCounter); return f ? (SECC('    FOTOGRAFÍAS MEDICIONES INGRESO')+SP(0)+f+SP(0)) : ''; })(),
         (()=>{ const f=_bloqFotosGenerales(d.fotos_b64_mediciones_generales||[], _extraFotos, _relsArr, _rIdCounter); return f ? (SECC('    FOTOGRAFÍAS GENERALES CALIDAD')+SP(0)+f+SP(0)) : ''; })(),
         tarCalidad.length>0 ? SECC('    TAREAS DE CALIDAD / MEDICIONES') : '',
-        tarCalidad.length>0 ? tabLista(tarCalidad,W) : '',
+        tarCalidad.length>0 ? tabLista(tarCalidad,W,d.tareas_calidad_autor) : '',
         F2W('OBSERVACIONES', obs.med_ingreso||'', W), SP(0),
 
         // ── 6. METROLOGÍA MECÁNICA ──
         SECC('6.  METROLOGÍA MECÁNICA'), RESP((d.responsables||{}).met_ok), SP(0),
-        SECC('   CONTROL METROLÓGICO DE ALOJAMIENTOS Y ASENTAMIENTOS'), SP(0),
-        tabMetroPlanillaCombinada(d,'metro_aloj_lc_ing','metro_aloj_lc_sal','ALOJAMIENTO LADO CARGA (Drive End)',W), SP(0),
-        tabMetroPlanillaCombinada(d,'metro_aloj_ll_ing','metro_aloj_ll_sal','ALOJAMIENTO LADO LIBRE (Non Drive End)',W), SP(0),
-        tabMetroPlanillaCombinada(d,'metro_asen_lc_ing','metro_asen_lc_sal','ASENTAMIENTO LADO CARGA (Drive End)',W), SP(0),
-        tabMetroPlanillaCombinada(d,'metro_asen_ll_ing','metro_asen_ll_sal','ASENTAMIENTO LADO LIBRE (Non Drive End)',W), SP(0),
+        SECC('   CONTROL METROLÓGICO (ALOJAMIENTOS, ASENTAMIENTOS Y EJES)'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_aloj_lc_ing','metro_aloj_lc_sal','ALOJAMIENTO LADO CARGA (Drive End)',W,'aloj_lc'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_aloj_ll_ing','metro_aloj_ll_sal','ALOJAMIENTO LADO LIBRE (Non Drive End)',W,'aloj_ll'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_asen_lc_ing','metro_asen_lc_sal','ASENTAMIENTO LADO CARGA (Drive End)',W,'asen_lc'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_asen_ll_ing','metro_asen_ll_sal','ASENTAMIENTO LADO LIBRE (Non Drive End)',W,'asen_ll'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_eje_lc_ing','metro_eje_lc_sal','EJE LADO CARGA (Drive End)',W,'eje_lc'), SP(0),
+        tabMetroPlanillaCombinada(d,'metro_eje_ll_ing','metro_eje_ll_sal','EJE LADO LIBRE (Non Drive End)',W,'eje_ll'), SP(0),
 
         tarMecIng.length>0 ? SECC('    TAREAS METROLOGÍA INGRESO') : '',
-        tarMecIng.length>0 ? tabLista(tarMecIng,W) : '',
+        tarMecIng.length>0 ? tabLista(tarMecIng,W,d.tareas_mecanica_ing_autor) : '',
         (()=>{
             const revItems = [
                 {k:'contratapa_lc', label:'Contratapa Lado Carga'},
@@ -988,7 +1017,7 @@ window.descargarInforme = async (i) => {
             return SECC('    TRABAJOS MECÁNICA — TÉCNICOS') + SP(0) + tabla + (fotos?SP(20)+fotos:'') + SP(0);
         })(),
         tarMec.length>0 ? SECC('    TAREAS MECÁNICA FINAL') : '',
-        tarMec.length>0 ? tabLista(tarMec,W) : '',
+        tarMec.length>0 ? tabLista(tarMec,W,d.tareas_mecanica_autor) : '',
         (()=>{ const f=_bloqFotosGenerales(d.fotos_b64_mecanica_generales||[], _extraFotos, _relsArr, _rIdCounter); return f ? (SECC('    FOTOGRAFÍAS GENERALES MECÁNICA')+SP(0)+f+SP(0)) : ''; })(),
         (()=>{ const f=_bloqFotosGenerales(d.fotos_b64_metrologia_generales||[], _extraFotos, _relsArr, _rIdCounter); return f ? (SECC('    FOTOGRAFÍAS GENERALES METROLOGÍA')+SP(0)+f+SP(0)) : ''; })(),
         SP(0), F2W('OBSERVACIONES', obs.metrologia||'', W), SP(0),
@@ -1019,7 +1048,7 @@ window.descargarInforme = async (i) => {
             return SECC('    CHECK DE ARMADO POR COMPONENTE') + SP(0) + chkA + SP(0);
         })(),
         tarArmado.length>0 ? SECC('    TAREAS DE ARMADO') : '',
-        tarArmado.length>0 ? tabLista(tarArmado,W) : '',
+        tarArmado.length>0 ? tabLista(tarArmado,W,d.tareas_armado_autor) : '',
         F2W('OBSERVACIONES ARMADO', obs.armado||'', W), SP(0),
 
         // ── 10. MEDICIONES ELÉCTRICAS DE SALIDA ──
@@ -1031,9 +1060,42 @@ window.descargarInforme = async (i) => {
         SECC('11. PRUEBAS DINÁMICAS'), RESP((d.responsables||{}).pruebas_ok), SP(0),
         tabPruebas(d,W), SP(0),
         tarPruebas.length>0 ? SECC('    TAREAS DE PRUEBAS DINÁMICAS') : '',
-        tarPruebas.length>0 ? tabLista(tarPruebas,W) : '',
+        tarPruebas.length>0 ? tabLista(tarPruebas,W,d.tareas_pruebas_autor) : '',
         (()=>{ const f=_bloqFotosGenerales(d.fotos_b64_pruebas||[], _extraFotos, _relsArr, _rIdCounter); return f ? (SECC('    FOTOGRAFÍAS PRUEBAS DINÁMICAS')+SP(0)+f+SP(0)) : ''; })(),
         F2W('OBSERVACIONES PRUEBAS', obs.pruebas||'', W), SP(0),
+
+        // ── 11b. RECHAZO DE PRUEBAS DINÁMICAS (con correcciones por área) ──
+        (d.pruebas_rechaza ? (()=>{
+            const rjc = d.pruebas_rechaza;
+            const lab = window._AREA_RECHAZO_LABEL || { mecanica:'Mecánica', bobinado:'Bobinado', armado_bal:'Balanceo / Armado' };
+            const cArea = 2200, cEst = 3000, cDet = W - cArea - cEst;
+            const motivoHtml = SECC('11b. RECHAZO EN PRUEBAS DINÁMICAS') + SP(0)
+                + TABLA([1800, W-1800], [
+                    TR([TH('MOTIVO',1800), TC(W-1800,'FFF5F5',R(rjc.motivo||'—',14,'C0392B',false),false)])
+                ]) + SP(0)
+                + TABLA([cArea,cEst,cDet], [
+                    TR([TH('ÁREA',cArea), TH('ESTADO',cEst), TH('CORRECCIONES / DETALLE',cDet,false)])
+                ]);
+            const filas = (rjc.areas||[]).map(a => {
+                const ok = !!(rjc.listas && rjc.listas[a]);
+                const c = (rjc.correcciones && rjc.correcciones[a]) || null;
+                const estado = ok ? R('✅ Resuelto',13,'27AE60',true) : R('❌ Pendiente',13,'E74C3C',true);
+                let det;
+                if (c) {
+                    det = R(c.texto||'',13,'2C3E50')
+                        + `<w:br/>`
+                        + R('👤 '+(c.usuario||'')+' · '+(c.fecha||''),12,'1a2a6a');
+                } else {
+                    det = ok ? R('Resuelto (sin detalle)',12,'888888') : R('Pendiente de corrección',12,'888888');
+                }
+                return TR([
+                    TC(cArea,'FFF5F5',R(lab[a]||a,13,'C0392B',true),false),
+                    TC(cEst, ok?'E8F8F0':'FFF5F5', estado, true),
+                    TC(cDet,'FFFFFF', det, false)
+                ]);
+            });
+            return motivoHtml + TABLA([cArea,cEst,cDet], filas) + SP(0);
+        })() : '') ,
 
         // ── 12. REGISTRO DE TEMPERATURAS ──
         SECC('12. REGISTRO DE TEMPERATURAS'), SP(0),
@@ -1042,7 +1104,7 @@ window.descargarInforme = async (i) => {
 
         // ── 13. TERMINACIONES ──
         SECC('13. TERMINACIONES'), RESP((d.responsables||{}).term_ok), SP(0),
-        tabTerminaciones(termLista,termChecks,W), SP(0),
+        tabTerminaciones(termLista,termChecks,W,d.terminaciones_autor), SP(0),
         F2W('OBSERVACIONES TERMINACIONES', obs.terminaciones||'', W), SP(0),
 
         // ── 14. OBSERVACIONES POR ÁREA ──

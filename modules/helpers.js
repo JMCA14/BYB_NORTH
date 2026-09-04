@@ -6,6 +6,9 @@ window.agregarTarea = (area, i) => {
     if (!txt) return;
     const key = `tareas_${area}`;
     if (!window.data[i][key]) window.data[i][key] = [];
+    if (!window.data[i][key+'_autor']) window.data[i][key+'_autor'] = {};
+    const usu = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
+    window.data[i][key+'_autor'][window.data[i][key].length] = usu;
     window.data[i][key].push(txt);
     input.value = '';
     window.save();
@@ -19,6 +22,7 @@ window.agregarTarea = (area, i) => {
                                   window.data[${i}]['${key}_checks'][${ti}]=this.checked; window.save();">
                     <span style="font-size:0.87em;">${item}</span>
                 </label>
+                <span style="font-size:0.72em;color:var(--text2);white-space:nowrap;">👤 ${(window.data[i][key+'_autor']||{})[ti]||''}</span>
                 <button onclick="window.quitarTarea('${area}',${i},${ti})" style="background:none;border:none;color:#e74c3c;cursor:pointer;padding:0 4px;">✕</button>
             </div>`).join('');
         input.focus();
@@ -33,6 +37,10 @@ window.quitarTarea = (area, i, ti) => {
     const newChecks = {};
     window.data[i][key].forEach((_, ni) => { if (checks[ni >= ti ? ni+1 : ni]) newChecks[ni] = true; });
     window.data[i][key+'_checks'] = newChecks;
+    const au = window.data[i][key+'_autor'] || {};
+    const newAu = {};
+    window.data[i][key].forEach((_, ni) => { const oi = ni >= ti ? ni+1 : ni; if (au[oi]) newAu[ni] = au[oi]; });
+    window.data[i][key+'_autor'] = newAu;
     window.save();
     window.render();
 };

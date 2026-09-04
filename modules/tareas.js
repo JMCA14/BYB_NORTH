@@ -5,6 +5,9 @@ window.agregarHallazgo = (i) => {
     const txt = (input?.value || '').trim();
     if (!txt) return;
     if (!window.data[i].hallazgos_lista) window.data[i].hallazgos_lista = [];
+    if (!window.data[i].hallazgos_autor) window.data[i].hallazgos_autor = {};
+    const usu = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
+    window.data[i].hallazgos_autor[window.data[i].hallazgos_lista.length] = usu;
     window.data[i].hallazgos_lista.push(txt);
     input.value = '';
     window.save(); window.render();
@@ -12,6 +15,10 @@ window.agregarHallazgo = (i) => {
 window.quitarHallazgo = (i, hi) => {
     if (!window.data[i].hallazgos_lista) return;
     window.data[i].hallazgos_lista.splice(hi, 1);
+    const au = window.data[i].hallazgos_autor || {};
+    const newAu = {};
+    window.data[i].hallazgos_lista.forEach((_, ni) => { if (au[ni >= hi ? ni + 1 : ni]) newAu[ni] = true; });
+    window.data[i].hallazgos_autor = newAu;
     window.save(); window.render();
 };
 
@@ -171,7 +178,7 @@ window._dibujarGrafEnCanvas = function(canvas, datos, exportMode=false) {
     const minV=Math.floor(rawMin - range*0.08);
     const maxV=Math.ceil(rawMax  + range*0.12);
 
-    const xS=n=>pad.l+(n2=>0, n/(datos.length-1))*cW;
+    const xS=n2=>pad.l+(n2/(datos.length-1))*cW;
     const yS=v=>pad.t+cH-((v-minV)/(maxV-minV||1))*cH;
 
     // Grillas horizontales
@@ -290,7 +297,8 @@ window.agregarRodamiento = (i) => {
     const mod = (document.getElementById('rod_mod_'+i)?.value || '').trim();
     if (!mod) return;
     if (!window.data[i].rodamientos) window.data[i].rodamientos = [];
-    window.data[i].rodamientos.push({ pos: pos || '—', mod });
+    const usu = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
+    window.data[i].rodamientos.push({ pos: pos || '—', mod, u: usu });
     document.getElementById('rod_pos_'+i).value = '';
     document.getElementById('rod_mod_'+i).value = '';
     window.save();
@@ -301,6 +309,7 @@ window.agregarRodamiento = (i) => {
             <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #e0e0e0;">
                 <span style="background:#004F88;color:white;border-radius:4px;padding:2px 8px;font-size:0.78em;font-weight:700;min-width:40px;text-align:center;">${r.pos}</span>
                 <span style="flex:1;font-size:0.88em;">${r.mod}</span>
+                <span style="font-size:0.72em;color:var(--text2);white-space:nowrap;">👤 ${r.u||''}</span>
                 <button onclick="window.quitarRodamiento(${i},${ri})" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:1em;">✕</button>
             </div>`).join('');
         document.getElementById('rod_mod_'+i)?.focus();
@@ -376,6 +385,9 @@ window.agregarTerminacion = (i) => {
     const txt = (input?.value || '').trim();
     if (!txt) return;
     if (!window.data[i].terminaciones_lista) window.data[i].terminaciones_lista = [];
+    if (!window.data[i].terminaciones_autor) window.data[i].terminaciones_autor = {};
+    const usu = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
+    window.data[i].terminaciones_autor[window.data[i].terminaciones_lista.length] = usu;
     window.data[i].terminaciones_lista.push(txt);
     input.value = '';
     window.save();
@@ -393,6 +405,14 @@ window.quitarTerminacion = (i, ti) => {
         if (checks[oldIdx]) newChecks[ni] = true;
     });
     window.data[i].terminaciones_checks = newChecks;
+    // Reindexar autores
+    const au = window.data[i].terminaciones_autor || {};
+    const newAu = {};
+    window.data[i].terminaciones_lista.forEach((_, ni) => {
+        const oldIdx = ni >= ti ? ni + 1 : ni;
+        if (au[oldIdx]) newAu[ni] = au[oldIdx];
+    });
+    window.data[i].terminaciones_autor = newAu;
     window.save();
     window.render();
 };
@@ -600,11 +620,27 @@ window.qcConfirmarRechazo = (i) => {
     alert(`❌ OT rechazada.\n\nÁreas a inspeccionar: ${areas.map(a => window._AREA_RECHAZO_LABEL?.[a]||a).join(', ')}\n\nDeben resolver y reenviar la OT para volver a Pruebas.`);
 };
 
-// Marcar que un área resolvió su parte tras el rechazo
+// Marcar que un área resolvió su parte tras el rechazo (con detalle de correcciones)
 window.qcMarcarAreaLista = (i, area) => {
     const d = window.data[i];
     if (!d.pruebas_rechaza?.areas?.includes(area)) return;
     if (!d.pruebas_rechaza.listas) d.pruebas_rechaza.listas = {};
+    if (!d.pruebas_rechaza.correcciones) d.pruebas_rechaza.correcciones = {};
+    // Capturar detalle de correcciones desde el textarea si existe
+    const ta = document.getElementById('qc_correccion_' + area);
+    if (ta && String(ta.value).trim()) {
+        d.pruebas_rechaza.correcciones[area] = {
+            texto: String(ta.value).trim(),
+            usuario: window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—',
+            fecha: new Date().toLocaleString()
+        };
+    } else if (!d.pruebas_rechaza.correcciones[area]) {
+        d.pruebas_rechaza.correcciones[area] = {
+            texto: '(sin detalle)',
+            usuario: window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—',
+            fecha: new Date().toLocaleString()
+        };
+    }
     d.pruebas_rechaza.listas[area] = true;
     d.pruebas_rechaza.listas[area + '_resp'] = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
     window.save(); window.render();
@@ -624,7 +660,7 @@ window.qcTodasAreasListas = (d) => {
     return d.pruebas_rechaza.areas.every(a => d.pruebas_rechaza.listas && d.pruebas_rechaza.listas[a]);
 };
 
-// Reenviar la OT a Pruebas Dinámicas tras resolver el rechazo
+// Reenviar la OT a Pruebas Dinámicas tras resolver el rechazo (desde Armado)
 window.qcReenviarAPruebas = (i) => {
     const d = window.data[i];
     if (!window.qcTodasAreasListas(d)) {
@@ -639,21 +675,35 @@ window.qcReenviarAPruebas = (i) => {
 // Panel que se muestra en cada área marcada cuando hay un rechazo de pruebas
 window._htmlPanelRechazoPruebas = (i, d, miArea) => {
     if (!d.pruebas_rechaza?.areas?.includes(miArea)) return '';
+    const xE = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const areaLabel = window._AREA_RECHAZO_LABEL?.[miArea] || miArea;
     const listo = !!(d.pruebas_rechaza.listas && d.pruebas_rechaza.listas[miArea]);
     const nombre = window.usuarioActual?.nombre || window.usuarioActual?.usuario || '—';
+    const corr = (d.pruebas_rechaza.correcciones && d.pruebas_rechaza.correcciones[miArea]);
+    const listaCorr = listo && corr
+        ? `<div style="margin-top:10px;background:#eafff2;border:1px solid #27ae60;border-radius:8px;padding:10px 12px;">
+            <div style="font-weight:700;color:#1a7a44;font-size:0.86em;margin-bottom:4px;">🔧 Correcciones realizadas:</div>
+            <div style="font-size:0.86em;color:#2c3e50;white-space:pre-wrap;">${xE(corr.texto)}</div>
+            <div style="font-size:0.76em;color:#7a8a7a;margin-top:5px;">👤 ${xE(corr.usuario)} · ${xE(corr.fecha)}</div>
+          </div>`
+        : '';
     return `<div style="background:#fff5f5;border:2px solid #e74c3c;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
         <div style="font-weight:800;color:#c0392b;font-size:0.95em;margin-bottom:6px;">❌ OT RECHAZADA EN PRUEBAS DINÁMICAS</div>
         <div style="font-size:0.85em;color:#555;margin-bottom:4px;"><b>Motivo:</b> ${d.pruebas_rechaza.motivo}</div>
         <div style="font-size:0.82em;color:#888;margin-bottom:10px;"><b>Este área debe:</b> ${areaLabel}. Corrige/inspecciona y marca como resuelto.</div>
-        ${listo
-            ? `<div style="display:flex;align-items:center;gap:8px;background:#eafff2;border:1.5px solid #27ae60;border-radius:8px;padding:8px 12px;">
+        ${!listo
+            ? `<div style="margin:6px 0 10px 0;">
+                <div style="font-weight:700;font-size:0.85em;color:#1a2a3a;margin-bottom:4px;">📝 Lista de correcciones / trabajos realizados en este área:</div>
+                <textarea id="qc_correccion_${miArea}" placeholder="Ej.: • Reapreté pernos de la tapa LC&#10;• Cambié empaque del cubre ventilador&#10;• Verifiqué balanceo..." style="width:100%;min-height:90px;padding:8px 10px;border:1.5px solid #e74c3c;border-radius:6px;font-size:0.9em;resize:vertical;box-sizing:border-box;"></textarea>
+              </div>
+              <button onclick="window.qcMarcarAreaLista(${i},'${miArea}')" style="background:#27ae60;color:white;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:bold;font-size:0.88em;">✅ Guardar correcciones y marcar ${areaLabel} como resuelto · ${nombre}</button>`
+            : `<div style="display:flex;align-items:center;gap:8px;background:#eafff2;border:1.5px solid #27ae60;border-radius:8px;padding:8px 12px;">
                 <span style="font-size:1.4em;">✅</span>
                 <span style="flex:1;font-size:0.88em;color:#1a7a44;"><b>Resuelto</b> · ${d.pruebas_rechaza.listas?.[miArea+'_resp'] || ''}</span>
-                <button onclick="window.qcDesmarcarAreaLista(${i},'${miArea}')" style="background:none;border:1px solid #27ae60;color:#1a7a44;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:0.82em;">Desmarcar</button>
-            </div>`
-            : `<button onclick="window.qcMarcarAreaLista(${i},'${miArea}')" style="background:#27ae60;color:white;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:bold;font-size:0.88em;">✅ Marcar ${areaLabel} como resuelto · ${nombre}</button>`
+                <button onclick="window.qcDesmarcarAreaLista(${i},'${miArea}')" style="background:none;border:1px solid #27ae60;color:#1a7a44;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:0.82em;">Editar / Desmarcar</button>
+              </div>`
         }
+        ${listaCorr}
     </div>`;
 };
 
@@ -676,5 +726,100 @@ window.irAOT = (areaId, otId) => {
         if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 200);
 };
+
+// ── Admin/Encargado: editar datos generales de una OT ──
+const _TIPOS_TRABAJO = [
+    ['','— Seleccionar —'],
+    ['reparacion','Reparación'],
+    ['bobinado','Bobinado'],
+    ['balanceo','Balanceo'],
+    ['armado','Armado'],
+    ['mantencion_preventiva','Mantención Preventiva'],
+    ['mantencion_correctiva','Mantención Correctiva'],
+    ['reparacion_bobinado','Reparación + Bobinado'],
+    ['otros','Otros'],
+];
+
+window.editarOTDatos = (i) => {
+    const d = window.data[i];
+    if (!d) return;
+    const rec = d.recepcion || {};
+    const plc = d.placa || {};
+    const campo = (id, label, val, ph) => `
+        <label style="display:block;margin-bottom:4px;font-size:0.82em;font-weight:700;color:#1a2a3a;">${label}</label>
+        <input id="${id}" value="${window._escAttr(d, val)}" placeholder="${ph||''}" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1.5px solid #d5dbe3;border-radius:6px;font-size:0.9em;">`;
+    const selectEstado = `
+        <label style="display:block;margin-bottom:4px;font-size:0.82em;font-weight:700;color:#1a2a3a;">Estado del flujo</label>
+        <select id="edt_estado" style="width:100%;padding:7px 9px;border:1.5px solid #d5dbe3;border-radius:6px;font-size:0.9em;">
+            ${[['desarme','1. Desarme'],['ingresos_pendientes','2. Ingreso / Mediciones'],['detalle_pendiente','3. Detalle Técnico'],['ejecucion_trabajos','4. Ejecución de Trabajos'],['pruebas_dinamicas','5. Pruebas Dinámicas'],['terminaciones','6. Terminaciones'],['check_salida','7. Check de Salida'],['despacho','8. Despacho'],['entregado','9. Entregado']]
+                .map(([v,l]) => `<option value="${v}" ${d.estado===v?'selected':''}>${l}</option>`).join('')}
+        </select>`;
+    const selectPri = `
+        <label style="display:block;margin-bottom:4px;font-size:0.82em;font-weight:700;color:#1a2a3a;">Prioridad</label>
+        <select id="edt_pri" style="width:100%;padding:7px 9px;border:1.5px solid #d5dbe3;border-radius:6px;font-size:0.9em;">
+            <option value="normal" ${d.pri!=='urgente'?'selected':''}>⚪ Normal</option>
+            <option value="urgente" ${d.pri==='urgente'?'selected':''}>🔴 Urgente</option>
+        </select>`;
+    const selectTipo = `
+        <label style="display:block;margin-bottom:4px;font-size:0.82em;font-weight:700;color:#1a2a3a;">Tipo de trabajo</label>
+        <select id="edt_tipo" style="width:100%;padding:7px 9px;border:1.5px solid #d5dbe3;border-radius:6px;font-size:0.9em;">
+            ${_TIPOS_TRABAJO.map(([v,l]) => `<option value="${v}" ${String(d.tipoTrabajo||'')===String(v)?'selected':''}>${l}</option>`).join('')}
+        </select>`;
+    const html = `<div id="modalEditarOT" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:#fff;border-radius:10px;padding:22px;max-width:560px;width:94%;max-height:88vh;overflow-y:auto;box-sizing:border-box;">
+            <h3 style="margin:0 0 4px 0;color:#1a2a3a;">✏️ Editar OT ${d.ot}</h3>
+            <p style="font-size:0.82em;color:#888;margin:0 0 16px 0;">Solo admin/encargado. Edita los datos y pulsa Guardar.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                ${campo('edt_emp','Empresa / Cliente', d.empresa,'Nombre de la empresa')}
+                ${selectEstado}
+                ${selectPri}
+                ${selectTipo}
+                ${campo('edt_marca','Marca', (plc.marca!==undefined?plc.marca:''),'Marca del motor')}
+                ${campo('edt_pot','Potencia (HP o kW)', (plc.pot!==undefined?plc.pot:''),'Potencia')}
+                ${campo('edt_volt','Voltaje', (plc.volt!==undefined?plc.volt:''),'Voltaje')}
+                ${campo('edt_amp','Amperaje', (plc.amp!==undefined?plc.amp:''),'Amperaje')}
+                ${campo('edt_rpm','RPM', (plc.rpm!==undefined?plc.rpm:''),'RPM')}
+                ${campo('edt_serie','N° Serie', rec.serie||'', 'Serie del equipo')}
+                ${campo('edt_color','Color', rec.color||'', 'Color')}
+                ${campo('edt_nfecha','Fecha', String(d.fecha||''), 'AAAA-MM-DD')}
+            </div>
+            <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;">
+                <button onclick="document.getElementById('modalEditarOT').style.display='none'" style="padding:9px 18px;background:#95a5a6;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Cancelar</button>
+                <button onclick="window.guardarOTDatos(${i})" style="padding:9px 20px;background:var(--primary,#1a2a3a);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;">💾 Guardar cambios</button>
+            </div>
+        </div>
+    </div>`;
+    const old = document.getElementById('modalEditarOT');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window._escAttr = (d, v) => { try { return String(v==null?'':v).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); } catch(e){ return ''; } };
+
+window.guardarOTDatos = (i) => {
+    const d = window.data[i];
+    if (!d) return;
+    if (!d.recepcion) d.recepcion = {};
+    if (!d.placa) d.placa = {};
+    const g = id => (document.getElementById(id)?.value || '').trim();
+    d.empresa = g('edt_emp');
+    d.estado = (document.getElementById('edt_estado')?.value || d.estado);
+    d.pri = (document.getElementById('edt_pri')?.value || d.pri);
+    d.tipoTrabajo = g('edt_tipo');
+    d.fecha = g('edt_nfecha');
+    d.placa.marca = g('edt_marca');
+    d.placa.pot = g('edt_pot');
+    d.placa.volt = g('edt_volt');
+    d.placa.amp = g('edt_amp');
+    d.placa.rpm = g('edt_rpm');
+    d.recepcion.serie = g('edt_serie');
+    d.recepcion.color = g('edt_color');
+    window.save();
+    window.render();
+    const m = document.getElementById('modalEditarOT');
+    if (m) m.style.display = 'none';
+    alert('✅ Datos de la OT actualizados.');
+};
+
 
 

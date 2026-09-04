@@ -228,6 +228,7 @@ window.render = () => {
                     <button class="btn-sm" style="background:#8e44ad;color:white;" onclick="window.descargarDetalle(${d.indexOriginal})" title="Descargar Detalle Word">📋</button>
                     <button class="btn-success btn-sm" onclick="window.descargarInforme(${d.indexOriginal})" title="Descargar Informe Final Word">📄</button>
                     ${window.puedeEditar() ? `<button class="btn-sm" style="background:#e67e22;color:white;" onclick="window.abrirPanelReabrir(${d.indexOriginal})" title="Reabrir etapa">🔓</button>` : ''}
+                    ${window.puedeEditar() ? `<button class="btn-sm" style="background:#7f8c8d;color:white;" onclick="window.editarOTDatos(${d.indexOriginal})" title="Editar datos de la OT">✏️</button>` : ''}
                     ${window.puedeEditar() ? `<button class="btn-del btn-sm" onclick="if(confirm('¿Eliminar OT ${d.ot}?')){window.data.splice(${d.indexOriginal},1); window.save()}">✕</button>` : ''}
                 </td></tr>`;
         });
@@ -250,12 +251,7 @@ window.render = () => {
         ).join('');
 
         let filtrados = window.data.filter(d => d.fecha && d.fecha.slice(0,7) === mesSel);
-        const st2 = (itemKey, jobKey, d2) => {
-            const val = (d2.metro_revision_checks && d2.metro_revision_checks[itemKey] && d2.metro_revision_checks[itemKey].val) || '';
-            if (val !== 'encamisado') return '<td style="text-align:center;color:var(--text-light)">—</td>';
-            const hecho = d2.mec_trab_usuario && d2.mec_trab_usuario[jobKey] && d2.mec_trab_usuario[jobKey].ok;
-            return hecho ? '<td style="color:var(--success-dark);text-align:center">✔</td>' : '<td style="color:var(--danger);text-align:center">✘</td>';
-        };
+        const st2 = (req, hecho) => (req === 'si') ? (hecho ? '<td style="color:var(--success-dark);text-align:center">✔</td>' : '<td style="color:var(--danger);text-align:center">✘</td>') : '<td style="text-align:center;color:var(--text-light)">—</td>';
         const ck2 = (paso, d) => (d.pasos && d.pasos[paso]) ? '<td style="color:var(--success-dark);text-align:center">✔</td>' : '<td style="text-align:center;color:var(--text-light)">—</td>';
         const rod2 = (d2) => {
             const rods2 = d2.rodamientos || [];
@@ -274,6 +270,9 @@ window.render = () => {
         };
         const fmtF = (f) => { if(!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
 
+        const filas = filtrados.map(d =>
+            `<tr><td><b style="color:var(--accent)">${d.ot}</b></td><td>${d.empresa}</td><td style="font-size:0.85em;white-space:nowrap">${fmtF(d.fecha)}</td>${rod2(d)}${st2(d.enc_lc,d.ejec_enc_lc)}${st2(d.enc_ll,d.ejec_enc_ll)}${st2(d.met_lc,d.ejec_met_lc)}${st2(d.met_ll,d.ejec_met_ll)}${ck2('mant_ok',d)}<td><span class="badge badge-blue" style="font-size:0.7em">${d.estado.replace(/_/g,' ').toUpperCase()}</span></td></tr>`
+        ).join('');
 
         // Calcular stats del mes
         const totalMes = filtrados.length;
@@ -299,7 +298,7 @@ window.render = () => {
                 <td style="font-size:0.85em;white-space:nowrap">${fmtF(d.fecha)}</td>
                 <td>${window.barraAvance(pct2)}</td>
                 ${rod2(d)}
-                ${st2('contratapa_lc','encam_lc',d)}${st2('contratapa_ll','encam_ll',d)}
+                ${st2(d.enc_lc,d.ejec_enc_lc)}${st2(d.enc_ll,d.ejec_enc_ll)}
                 ${ck2('mant_ok',d)}
                 <td><span class="badge badge-blue" style="font-size:0.7em">${d.estado.replace(/_/g,' ').toUpperCase()}</span></td>
             </tr>`;
@@ -344,7 +343,7 @@ window.render = () => {
 
             <div style="overflow-x:auto">
             <table class="tab-tec" style="font-size:0.83em;">
-                <thead><tr><th>OT</th><th>Empresa</th><th>Fecha</th><th style="min-width:130px">Avance</th><th>Rodamientos</th><th>Encam. LC</th><th>Encam. LL</th><th>Mant</th><th>Estado</th></tr></thead>
+                <thead><tr><th>OT</th><th>Empresa</th><th>Fecha</th><th style="min-width:130px">Avance</th><th>Rodamientos</th><th>E.LC</th><th>E.LL</th><th>Mant</th><th>Estado</th></tr></thead>
                 <tbody>${filasNuevas || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2);">Sin OTs para este mes</td></tr>'}</tbody>
             </table></div>
         </div>`;
@@ -562,24 +561,24 @@ window.render = () => {
                 UI = window.renderAreaCalidad ? window.renderAreaCalidad(i, d, obs, p) : '';
             }
             else if (window.vistaActual === 'mecanica') {
-            UI = window.renderAreaMecanica ? window.renderAreaMecanica(i, d, obs, p) : '';
-            // Si la OT fue rechazada en pruebas y Mecánica está marcada, mostrar panel de corrección
-           if (d.pruebas_rechaza?.areas?.includes('mecanica')) {
-           UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'mecanica') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
+                UI = window.renderAreaMecanica ? window.renderAreaMecanica(i, d, obs, p) : '';
+                // Si la OT fue rechazada en pruebas y Mecánica está marcada, mostrar panel de corrección
+                if (d.pruebas_rechaza?.areas?.includes('mecanica')) {
+                    UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'mecanica') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
                 }
-           }
-          else if (window.vistaActual === 'bobinado' && (d.estado === 'ejecucion_trabajos' && d.tipoTrabajo === 'bobinado' || d.pruebas_rechaza?.areas?.includes('bobinado'))) {
-          UI = window.renderAreaBobinado ? window.renderAreaBobinado(i, d, obs, p) : '';
-          if (d.pruebas_rechaza?.areas?.includes('bobinado')) {
-          UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'bobinado') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
-               }
-          }
-          else if (window.vistaActual === 'armado_bal') {
-          UI = window.renderAreaArmado ? window.renderAreaArmado(i, d, obs, p) : '';
-          if (d.pruebas_rechaza?.areas?.includes('armado_bal')) {
-          UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'armado_bal') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
-               }
-           }
+            }
+            else if (window.vistaActual === 'bobinado' && (d.estado === 'ejecucion_trabajos' && d.tipoTrabajo === 'bobinado' || d.pruebas_rechaza?.areas?.includes('bobinado'))) {
+                UI = window.renderAreaBobinado ? window.renderAreaBobinado(i, d, obs, p) : '';
+                if (d.pruebas_rechaza?.areas?.includes('bobinado')) {
+                    UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'bobinado') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
+                }
+            }
+            else if (window.vistaActual === 'armado_bal') {
+                UI = window.renderAreaArmado ? window.renderAreaArmado(i, d, obs, p) : '';
+                if (d.pruebas_rechaza?.areas?.includes('armado_bal')) {
+                    UI = (window._htmlPanelRechazoPruebas ? window._htmlPanelRechazoPruebas(i, d, 'armado_bal') : '') + UI + (window.qcTodasAreasListas(d) ? `<button class="btn-finish" onclick="window.qcReenviarAPruebas(${i})" style="margin-top:10px;">🔁 Reenviar a Pruebas Dinámicas</button>` : '');
+                }
+            }
             else if (window.vistaActual === 'despacho' && d.estado === 'despacho') {
                 UI = window.renderAreaDespacho ? window.renderAreaDespacho(i, d, obs, p) : '';
             }
@@ -639,6 +638,17 @@ window.render = () => {
             if (mount) renderVistaFotos(mount);
         }).catch(err => {
             v.innerHTML = `<div class="card"><p style="color:red;">Error cargando galería: ${err.message}</p></div>`;
+        });
+    }
+
+    // ── Vista Chat interno ──
+    if (window.vistaActual === 'chat') {
+        v.innerHTML = '<div><div id="chat-mount"></div></div>';
+        import('./chat.js').then(mod => {
+            const mount = document.getElementById('chat-mount');
+            if (mount) mod.renderChat(mount, window.usuarioActual);
+        }).catch(err => {
+            v.innerHTML = `<div class="card"><p style="color:red;">Error cargando chat: ${err.message}</p></div>`;
         });
     }
 };

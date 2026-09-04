@@ -39,7 +39,7 @@ window.renderAreaDesarme = function(i, d, obs, p) {
                                                 onchange="if(!window.data[${i}].tareas_desarme_checks) window.data[${i}].tareas_desarme_checks={};
                                                           window.data[${i}].tareas_desarme_checks[${ti}]=this.checked;
                                                           window.save();">
-                                            <span style="font-size:0.87em;${(d.tareas_desarme_checks||{})[ti]?'text-decoration:line-through;color:#888;':''}">${item}</span>
+                                            <span style="font-size:0.87em;${(d.tareas_desarme_checks||{})[ti]?'text-decoration:line-through;color:#888;':''}">${item}${(d.tareas_desarme_autor&&d.tareas_desarme_autor[ti])?` <span style="font-size:0.75em;color:#5a6a8a;">👤 ${d.tareas_desarme_autor[ti]}</span>`:''}</span>
                                         </label>
                                         <button onclick="window.quitarTarea('desarme',${i},${ti})" style="background:none;border:none;color:#e74c3c;cursor:pointer;padding:0 4px;">✕</button>
                                     </div>`).join('')}
@@ -185,7 +185,7 @@ window.renderAreaDesarme = function(i, d, obs, p) {
                                                 onchange="if(!window.data[${i}].tareas_mantencion_checks) window.data[${i}].tareas_mantencion_checks={};
                                                           window.data[${i}].tareas_mantencion_checks[${ti}]=this.checked;
                                                           window.save();">
-                                            <span style="font-size:0.87em;${(d.tareas_mantencion_checks||{})[ti]?'text-decoration:line-through;color:#888;':''}">${item}</span>
+                                            <span style="font-size:0.87em;${(d.tareas_mantencion_checks||{})[ti]?'text-decoration:line-through;color:#888;':''}">${item}${(d.tareas_mantencion_autor&&d.tareas_mantencion_autor[ti])?` <span style="font-size:0.75em;color:#5a6a8a;">👤 ${d.tareas_mantencion_autor[ti]}</span>`:''}</span>
                                         </label>
                                         <button onclick="window.quitarTarea('mantencion',${i},${ti})" style="background:none;border:none;color:#e74c3c;cursor:pointer;padding:0 4px;">✕</button>
                                     </div>`).join('')}
