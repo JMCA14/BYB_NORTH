@@ -193,6 +193,9 @@ window.actualizarInfoUsuario = () => {
             nav.appendChild(btnChat);
         }
     }
+    // Contador de mensajes no leídos en el botón del chat
+    if (window._iniciarEscuchaChat) window._iniciarEscuchaChat();
+    if (window._actualizarBadgeChat) window._actualizarBadgeChat();
 };
 
 // ── Cargar lista de perfiles (para el panel de admin). Ya NO contiene
