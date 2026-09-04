@@ -681,7 +681,7 @@ window.filtrarOTsForm = () => {
     if (!dd) return;
     // OTs ya agregadas como cards
     const yaAgregadas = new Set([...document.querySelectorAll('#listaOTsForm .ot-card')].map(c => c.dataset.ot));
-    const resultados = window._otsList_cache.filter(ot => {
+    const resultados = (window._otsList_cache || []).filter(ot => {
         const emp = (window.data.find(d=>String(d.ot)===String(ot))?.empresa||'').toLowerCase();
         return !yaAgregadas.has(String(ot)) && (!q || String(ot).includes(q) || emp.includes(q));
     }).slice(0, 8);
