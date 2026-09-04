@@ -78,9 +78,22 @@ exports.crearUsuario = functions.https.onCall(async (data, context) => {
     });
   } catch (e) {
     if (e.code === "auth/email-already-exists") {
-      throw new functions.https.HttpsError("already-exists", "El correo ya está en uso.");
+      // Puede existir una cuenta huérfana (se creó la cuenta pero el perfil
+      // no se guardó en un intento previo). Si no tiene perfil, se reutiliza.
+      try {
+        const existente = await admin.auth().getUserByEmail(email);
+        const perfilExistente = await perfilesRef.child(existente.uid).once("value");
+        if (perfilExistente.exists()) {
+          throw new functions.https.HttpsError("already-exists", "El correo ya está en uso.");
+        }
+        userRecord = existente;
+      } catch (e2) {
+        if (e2 && e2.code === "functions/already-exists") throw e2;
+        throw new functions.https.HttpsError("internal", "Error al recuperar usuario existente: " + e2.message);
+      }
+    } else {
+      throw new functions.https.HttpsError("internal", "Error creando la cuenta: " + e.message);
     }
-    throw new functions.https.HttpsError("internal", "Error creando la cuenta: " + e.message);
   }
 
   // 6) Guardar perfil (nunca la contraseña)
@@ -92,7 +105,7 @@ exports.crearUsuario = functions.https.onCall(async (data, context) => {
     activo,
     asignaciones: Array.isArray(data.asignaciones) ? data.asignaciones : [],
     areaGeneral: Array.isArray(data.areaGeneral) ? data.areaGeneral : [],
-    creadoEn: admin.database().ServerValue.TIMESTAMP,
+    creadoEn: Date.now(),
   };
   await perfilesRef.child(userRecord.uid).set(perfil);
 
