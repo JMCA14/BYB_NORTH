@@ -1140,6 +1140,9 @@ window.descargarInforme = async (i) => {
                 + TABLA([1800, W-1800], [
                     TR([TH('MOTIVO',1800), TC(W-1800,'FFF5F5',R(rjc.motivo||'—',14,'C0392B',false),false)])
                 ]) + SP(0)
+                + (rjc.autor ? (TABLA([1800, W-1800], [
+                    TR([TH('RECHAZADO POR',1800), TC(W-1800,'FFFFFF',R('👤 '+(rjc.autor||'')+(rjc.fecha?' · '+rjc.fecha:''),12,'1a2a6a'), false)])
+                ]) + SP(0)) : '')
                 + TABLA([cArea,cEst,cDet], [
                     TR([TH('ÁREA',cArea), TH('ESTADO',cEst), TH('CORRECCIONES / DETALLE',cDet,false)])
                 ]);
@@ -1739,4 +1742,3 @@ window.irAOT = (areaId, otId) => {
         if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 200);
 };
-
