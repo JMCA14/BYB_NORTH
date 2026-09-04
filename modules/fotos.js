@@ -440,8 +440,7 @@ window._prepararFotosCompParaWord = async (fotosObj) => {
     return result;
 };
 
-console.log('✅ 08_fotos.js — Cloudinary:', CLOUD_NAME, '| Preset:', UPLOAD_PRESET);
-
 // Exponer funciones para que sensores.js y otros módulos puedan usarlas
 window._comprimirImagen  = comprimirImagen;
-window._subirACloudinary = subirACloudinary;
+// sensores.js usa window._subirACloudinary (sube a Dropbox vía Cloud Function)
+window._subirACloudinary = subirAAlmacen;
