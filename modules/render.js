@@ -4,6 +4,15 @@
 // No redefinir aquí para evitar sobreescribir la versión correcta.
 
 
+window._filtrarFilasListado = (q) => {
+    const tbody = document.getElementById('tbodyListado');
+    if (!tbody) return;
+    const texto = (q || '').toLowerCase();
+    tbody.querySelectorAll('tr').forEach(tr => {
+        tr.style.display = tr.textContent.toLowerCase().includes(texto) ? '' : 'none';
+    });
+};
+
 window.render = () => {
     const v = document.getElementById("vista");
     if (!v) return;
@@ -247,9 +256,9 @@ window.render = () => {
 
         let html = `<div class="card"><h2>📋 Listado General</h2>
         <div class="search-container">
-            <input type="text" class="search-input" id="buscado" placeholder="🔍 Buscar por OT o Empresa..." value="${window.filtroBusqueda}" oninput="window.filtroBusqueda=this.value; window.render()">
+            <input type="text" class="search-input" id="buscado" placeholder="🔍 Buscar por OT o Empresa..." value="${window.filtroBusqueda}" oninput="window.filtroBusqueda=this.value.toLowerCase(); window._filtrarFilasListado(this.value)">
         </div><div style="overflow-x:auto">
-        <table><thead><tr><th>⚑</th><th>OT</th><th>Empresa</th><th>Fecha Entrega</th><th>Estado</th><th style='min-width:130px'>Avance</th><th>Acciones</th></tr></thead><tbody>`;
+        <table><thead><tr><th>⚑</th><th>OT</th><th>Empresa</th><th>Fecha Entrega</th><th>Estado</th><th style='min-width:130px'>Avance</th><th>Acciones</th></tr></thead><tbody id="tbodyListado">`;
 
         filtradas.forEach((d) => {
             const estadoBadge = d.estado.replace(/_/g,' ').toUpperCase();
