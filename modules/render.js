@@ -689,6 +689,19 @@ window.render = () => {
             }
         });
         v.innerHTML = hay ? html : html + "<p style='color:var(--text2); padding:20px;'>Sin tareas pendientes.</p>";
+        // Panel de Archivos y Documentos del área (aparece en todas las vistas de área)
+        const AREAS_DOC = ['desarme_mant','calidad','mecanica','bobinado','armado_bal','despacho'];
+        if (AREAS_DOC.includes(window.vistaActual)) {
+            const docMount = document.createElement('div');
+            docMount.id = 'docs-area-mount';
+            document.getElementById('vista').appendChild(docMount);
+            import('./documentos.js').then(({ renderDocsArea }) => {
+                const mount = document.getElementById('docs-area-mount');
+                if (mount) renderDocsArea(mount, window.vistaActual, window.usuarioActual);
+            }).catch(err => {
+                console.error('Error cargando documentos:', err);
+            });
+        }
         // Dibujar gráficos de temperatura pendientes
         setTimeout(() => {
             document.querySelectorAll('canvas[data-idx]').forEach(cv => {
