@@ -602,17 +602,17 @@ window.render = () => {
     }
     else {
         let html = `<div class="card"><h2>${window.vistaActual.replace(/_/g,' ').toUpperCase()}</h2></div>`;
-        // Herramientas de bobinado bajo el encabezado (siempre visibles en la vista Bobinado)
-        if (window.vistaActual === 'bobinado') {
-            html += `<div style="margin:-6px 0 14px;text-align:center;">
-                <button class="btn-finish" style="background:#8e44ad;border:none;margin:0;" onclick="window.abrirCalculadora()">🧮 Herramientas de Bobinado (Calculadora)</button>
-            </div>`;
-        }
-        // Herramientas de mecánica bajo el encabezado (siempre visibles en la vista Mecánica)
-        if (window.vistaActual === 'mecanica') {
-            html += `<div style="margin:-6px 0 14px;text-align:center;">
-                <button class="btn-finish" style="background:#16a085;border:none;margin:0;" onclick="window.abrirEjes()">⚙️ Plano de Ejes (Mecánica)</button>
-            </div>`;
+        // Barra superior del área: herramientas (si las hay) + Archivos y Documentos
+        if (['desarme_mant','calidad','mecanica','bobinado','armado_bal','despacho'].includes(window.vistaActual)) {
+            const btns = [];
+            if (window.vistaActual === 'bobinado') {
+                btns.push(`<button class="btn-finish" style="background:#8e44ad;border:none;margin:0;" onclick="window.abrirCalculadora()">🧮 Herramientas de Bobinado</button>`);
+            }
+            if (window.vistaActual === 'mecanica') {
+                btns.push(`<button class="btn-finish" style="background:#16a085;border:none;margin:0;" onclick="window.abrirEjes()">⚙️ Plano de Ejes (Mecánica)</button>`);
+            }
+            btns.push(`<button class="btn-finish" style="background:#f39c12;border:none;margin:0;" onclick="window.abrirDocsArea('${window.vistaActual}')">📚 Archivos y Documentos</button>`);
+            html += `<div style="margin:-6px 0 14px;text-align:center;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">${btns.join('')}</div>`;
         }
         let hay = false;
         // Mapeo: vistaActual → areaId para filtrar OTs por usuario autorizado
@@ -689,19 +689,6 @@ window.render = () => {
             }
         });
         v.innerHTML = hay ? html : html + "<p style='color:var(--text2); padding:20px;'>Sin tareas pendientes.</p>";
-        // Panel de Archivos y Documentos del área (aparece en todas las vistas de área)
-        const AREAS_DOC = ['desarme_mant','calidad','mecanica','bobinado','armado_bal','despacho'];
-        if (AREAS_DOC.includes(window.vistaActual)) {
-            const docMount = document.createElement('div');
-            docMount.id = 'docs-area-mount';
-            document.getElementById('vista').appendChild(docMount);
-            import('./documentos.js').then(({ renderDocsArea }) => {
-                const mount = document.getElementById('docs-area-mount');
-                if (mount) renderDocsArea(mount, window.vistaActual, window.usuarioActual);
-            }).catch(err => {
-                console.error('Error cargando documentos:', err);
-            });
-        }
         // Dibujar gráficos de temperatura pendientes
         setTimeout(() => {
             document.querySelectorAll('canvas[data-idx]').forEach(cv => {

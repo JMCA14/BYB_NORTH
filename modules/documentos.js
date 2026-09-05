@@ -1,9 +1,9 @@
 // ════════════════════════════════════════════════════════════
 //  documentos.js  —  Archivos y Documentos por área (BYB North)
 //
-//  • Cada área del taller (desarme, calidad, mecánica, bobinado,
-//    armado, despacho) tiene su propia carpeta de documentos.
-//  • Solo se muestra lo de la carpeta del área activa.
+//  • Aparece como ventana (modal) desde la barra del área.
+//  • Cada área del taller tiene su propia carpeta de documentos;
+//    la ventana muestra solo los de esa área.
 //  • Suben/borran: Admin y Encargado. Todos ven y descargan.
 //  • Archivo → Firebase Cloud Storage (permanente)
 //    metadatos → Realtime Database (nodo "documentos_byb")
@@ -54,16 +54,21 @@ function _fmtFecha(ts) {
 }
 
 // ── Estilos ──
-export function inyectarEstilosDocumentos() {
+function inyectarEstilosDocumentos() {
     if (document.getElementById('byb-docs-style')) return;
     const st = document.createElement('style');
     st.id = 'byb-docs-style';
     st.textContent = `
-    .byb-docs{background:white;border:1px solid var(--border,#e0e6ef);border-radius:10px;padding:18px;margin-top:18px;box-shadow:0 1px 4px rgba(20,40,80,0.05);}
-    .byb-docs-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
-    .byb-docs-head h3{margin:0;font-size:1.05em;color:var(--text,#1a2a3a);}
+    .byb-docs-ov{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,20,30,0.55);z-index:9998;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px 16px;box-sizing:border-box;}
+    .byb-docs-box{background:white;border-radius:12px;width:min(860px,96vw);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,0.35);overflow:hidden;animation:bybDocsIn 0.18s ease-out;}
+    @keyframes bybDocsIn{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
+    .byb-docs-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e8edf4;background:#fbfcfe;}
+    .byb-docs-head h3{margin:0;font-size:1.05em;color:var(--text,#1a2a3a);flex:1;}
+    .byb-docs-x{background:none;border:none;font-size:1.5em;line-height:1;cursor:pointer;color:#7f8c8d;padding:0 4px;}
+    .byb-docs-x:hover{color:#e74c3c;}
+    .byb-docs-body{padding:16px 18px;overflow-y:auto;}
     .byb-docs-sub{font-size:0.82em;color:var(--text2,#667b8d);margin:0 0 12px 0;}
-    .byb-docs-btn{background:var(--primary,#1a2a3a);color:white;border:none;border-radius:6px;padding:8px 14px;font-size:0.85em;font-weight:700;cursor:pointer;margin-left:auto;}
+    .byb-docs-btn{background:var(--primary,#1a2a3a);color:white;border:none;border-radius:6px;padding:9px 16px;font-size:0.88em;font-weight:700;cursor:pointer;}
     .byb-docs-btn:hover{opacity:0.9;}
     .byb-docs-list{display:flex;flex-direction:column;gap:8px;}
     .byb-docs-item{display:flex;align-items:center;gap:12px;border:1px solid #e8edf4;border-radius:8px;padding:10px 12px;background:#fbfcfe;transition:background 0.15s;}
@@ -77,48 +82,56 @@ export function inyectarEstilosDocumentos() {
     .byb-docs-acc button:hover{background:#eef3f9;}
     .byb-docs-empty{text-align:center;color:var(--text2,#667b8d);padding:22px 10px;font-size:0.9em;background:#fafbfd;border:1px dashed #cfd9e4;border-radius:8px;}
     .byb-docs-loading{color:var(--text2,#667b8d);font-size:0.85em;padding:6px 2px;}
-    .byb-docs-aviso{display:flex;align-items:center;gap:6px;background:#fef8ec;border:1px solid #f7e3b3;border-radius:8px;padding:8px 12px;font-size:0.8em;color:#8a6d1f;margin-bottom:12px;}
     `;
     document.head.appendChild(st);
 }
 
-// ── Render del panel ──
-export function renderDocsArea(container, areaId, usuario) {
-    inyectarEstilosDocumentos();
+// ── Abrir ventana de documentos del área ──
+window.abrirDocsArea = (areaId) => {
+    const exist = document.querySelector('.byb-docs-ov');
+    if (exist) { exist.remove(); }
+    const usuario = window.usuarioActual;
     const info = AREAS[areaId] || { label: areaId, color: '#555' };
     const puede = _puedeEditar(usuario);
-    const puedeHtml = puede
-        ? `<button class="byb-docs-btn" onclick="window._subirDocs(this)" data-area="${areaId}">⬆ Subir archivos</button>
-           <input type="file" multiple accept="*" style="display:none;" id="docs-file-input">`
-        : '';
+    inyectarEstilosDocumentos();
 
-    container.innerHTML = `
-    <div class="byb-docs">
+    const ov = document.createElement('div');
+    ov.className = 'byb-docs-ov';
+    ov.innerHTML = `
+    <div class="byb-docs-box">
         <div class="byb-docs-head">
             <span style="font-size:1.3em;">📚</span>
             <h3>Archivos y Documentos — <span style="color:${info.color};">${esc(info.label)}</span></h3>
-            ${puedeHtml}
+            <button class="byb-docs-x" title="Cerrar" onclick="window._cerrarDocsArea()">✕</button>
         </div>
-        <p class="byb-docs-sub">Apoyo técnico del área: aquí está el material cargado permanentemente.</p>
-        <div class="byb-docs-list" id="docs-area-list"><div class="byb-docs-loading">Cargando...</div></div>
+        <div class="byb-docs-body">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                <p class="byb-docs-sub" style="margin:0;flex:1;">Apoyo técnico del área: material cargado permanentemente.</p>
+                ${puede ? `<button class="byb-docs-btn" onclick="window._subirDocs(this)" data-area="${areaId}">⬆ Subir archivos</button>
+                    <input type="file" multiple style="display:none;" id="docs-file-input">` : ''}
+            </div>
+            <div class="byb-docs-list" id="docs-area-list"><div class="byb-docs-loading">Cargando...</div></div>
+        </div>
     </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
 
     // Escucha en tiempo real del nodo de documentos de esta área
     const nodeRef = fbRef(db, 'documentos_byb/' + areaId);
     onValue(nodeRef, snap => {
+        const listEl = document.getElementById('docs-area-list');
+        if (!listEl) return;
         const val = snap.val() || {};
         const lista = Object.entries(val)
             .map(([id, d]) => ({ id, ...(d||{}) }))
             .sort((a,b) => (Number(b.ts)||0) - (Number(a.ts)||0));
-        const listEl = document.getElementById('docs-area-list');
-        if (!listEl) return;
         if (lista.length === 0) {
             listEl.innerHTML = `<div class="byb-docs-empty">📂 Aún no hay archivos en esta sección.</div>`;
             return;
         }
         listEl.innerHTML = lista.map(d => {
             const acc = puede ? `<button title="Descargar" onclick="window._descargarDoc('${esc(d.url)}')">⬇</button>
-                <button title="Eliminar" style="border-color:#f2c9c9;" onclick="window._borrarDoc(event,'${areaId}','${d.id}')">🗑</button>` 
+                <button title="Eliminar" style="border-color:#f2c9c9;" onclick="window._borrarDoc(event,'${areaId}','${d.id}')">🗑</button>`
                 : `<button title="Descargar" onclick="window._descargarDoc('${esc(d.url)}')">⬇</button>`;
             return `<div class="byb-docs-item">
                 <div class="byb-docs-ico">${_iconoTipo(d.nombre, d.tipo)}</div>
@@ -130,7 +143,11 @@ export function renderDocsArea(container, areaId, usuario) {
             </div>`;
         }).join('');
     });
-}
+};
+
+window._cerrarDocsArea = () => {
+    document.querySelectorAll('.byb-docs-ov').forEach(el => el.remove());
+};
 
 // ── Subir archivos ──
 window._subirDocs = async (btn) => {
@@ -142,6 +159,7 @@ window._subirDocs = async (btn) => {
         if (!files.length) return;
         const antes = btn.innerHTML;
         const total = files.length;
+        const subidos = [];
         for (let i = 0; i < total; i++) {
             const f = files[i];
             btn.innerHTML = `⏳ ${i+1}/${total}...`;
@@ -160,12 +178,13 @@ window._subirDocs = async (btn) => {
                     ts: Date.now(),
                     url,
                 });
+                subidos.push(f.name);
             } catch(e) {
                 alert('⚠️ Error subiendo "' + f.name + '": ' + (e && e.message ? e.message : e));
             }
         }
         btn.innerHTML = antes;
-        alert(`✅ ${total} archivo(s) subido(s) a ${(AREAS[areaId]||{}).label || areaId}.`);
+        alert(`✅ ${subidos.length} archivo(s) subido(s) a ${(AREAS[areaId]||{}).label || areaId}.`);
     };
     input.click();
 };
