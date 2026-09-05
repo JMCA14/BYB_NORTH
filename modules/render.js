@@ -395,14 +395,6 @@ window.render = () => {
         const pctMes     = totalMes ? Math.round(filtrados.reduce((s,d) => s + window.calcularAvance(d), 0) / totalMes) : 0;
         const colPctMes  = window.colorAvance(pctMes);
 
-        // Gráfico de barras de avance por OT
-        const grafId = 'graf_mensual_' + mesSel.replace('-','');
-        const grafHtml = filtrados.length === 0 ? '' : `
-            <div style="margin-bottom:14px;">
-                <div style="font-size:0.8em;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Avance por OT</div>
-                <canvas id="${grafId}" style="width:100%;height:${Math.max(60, filtrados.length * 32)}px;display:block;"></canvas>
-            </div>`;
-
         const filasNuevas = filtrados.map(d => {
             const pct2 = window.calcularAvance(d);
             return `<tr>
@@ -457,8 +449,6 @@ window.render = () => {
                 </div>
             </div>
 
-            ${grafHtml}
-
             <div style="overflow-x:auto">
             <table class="tab-tec" style="font-size:0.78em;">
                 <thead><tr>
@@ -472,62 +462,6 @@ window.render = () => {
                 <tbody>${filasNuevas || '<tr><td colspan="13" style="text-align:center;padding:20px;color:var(--text2);">Sin OTs para este mes</td></tr>'}</tbody>
             </table></div>
         </div>`;
-
-        // Dibujar gráfico de barras horizontales de avance
-        if (filtrados.length > 0) {
-            setTimeout(() => {
-                const canvas = document.getElementById(grafId);
-                if (!canvas) return;
-                const W = canvas.offsetWidth || 600;
-                const rowH = 28, padL = 120, padR = 50, padT = 8, padB = 8;
-                const H = padT + filtrados.length * rowH + padB;
-                canvas.width = W; canvas.height = H;
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0,0,W,H);
-                const barW = W - padL - padR;
-
-                filtrados.forEach((d2, idx) => {
-                    const pct3 = window.calcularAvance(d2);
-                    const y = padT + idx * rowH;
-                    const col = window.colorAvance(pct3);
-
-                    // Fondo alternado
-                    ctx.fillStyle = idx%2===0 ? '#f8f9fa' : '#ffffff';
-                    ctx.fillRect(0, y, W, rowH);
-
-                    // Label OT
-                    ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 11px Calibri';
-                    ctx.textAlign = 'right';
-                    ctx.fillText('OT ' + d2.ot, padL - 6, y + rowH/2 + 4);
-
-                    // Barra fondo
-                    ctx.fillStyle = '#e8e8e8';
-                    ctx.beginPath();
-                    ctx.roundRect(padL, y+6, barW, rowH-12, 4);
-                    ctx.fill();
-
-                    // Barra progreso
-                    const bw = Math.round(barW * pct3 / 100);
-                    if (bw > 0) {
-                        ctx.fillStyle = col;
-                        ctx.beginPath();
-                        ctx.roundRect(padL, y+6, bw, rowH-12, 4);
-                        ctx.fill();
-                    }
-
-                    // % texto
-                    ctx.fillStyle = pct3 > 15 ? 'white' : col;
-                    ctx.font = 'bold 10px Calibri';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(pct3 + '%', padL + Math.max(bw - 28, 4), y + rowH/2 + 4);
-
-                    // Empresa
-                    ctx.fillStyle = '#888'; ctx.font = '10px Calibri';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(d2.empresa.slice(0,20), padL + barW + 4, y + rowH/2 + 4);
-                });
-            }, 80);
-        }
     }
     else if (window.vistaActual === "crear") {
         if (window.esTecnico() && !window.getAreasGenerales().includes("calidad")) { v.innerHTML = `<div class="card"><p>⛔ Los técnicos no pueden crear OTs.</p></div>`; return; }
