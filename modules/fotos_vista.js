@@ -41,6 +41,176 @@ const _thumbSrc = (f) => {
     return _imgSrc(f);
 };
 
+// ── Helpers de descarga ─────────────────────────────────────
+const _nomFoto = (f, fallback) => {
+    if (f && f.nombre) return f.nombre;
+    if (f && f.url) return f.url.split('/').pop().split('?')[0] || fallback;
+    return fallback;
+};
+
+const _fotoAblob = async (f) => {
+    if (!f) return null;
+    if (f.url) {
+        const res = await fetch(f.url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.blob();
+    }
+    if (f.b64) {
+        const bin = atob(f.b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new Blob([bytes], { type: 'image/' + (f.ext || 'jpeg') });
+    }
+    return null;
+};
+
+const _descargarBlob = (blob, nombre) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+};
+
+// Descarga un archivo de imagen por su URL (foto individual)
+window._fotosVistaDescargarFoto = async (src, nombre) => {
+    try {
+        const res = await fetch(src, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        _descargarBlob(await res.blob(), nombre || 'foto.jpg');
+    } catch (e) {
+        alert('⚠️ No se pudo descargar la foto: ' + (e && e.message ? e.message : e));
+    }
+};
+
+// Descarga varias fotos como .zip
+window._descargarZipFotos = async (entradas, nombreZip) => {
+    const lista = entradas.filter(e => e && e.src);
+    if (lista.length === 0) { alert('No hay fotos para descargar.'); return; }
+    try {
+        const JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js')).default || (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'));
+        const zip = new JSZip();
+        const usadas = new Set();
+        for (const e of lista) {
+            let nombre = _nomFoto(e.foto, 'foto.jpg');
+            if (usadas.has(nombre)) nombre = Date.now() + '_' + nombre;
+            usadas.add(nombre);
+            try {
+                const blob = await _fotoAblob(e.foto);
+                if (blob) zip.file(nombre.replace(/\.[^.]*$/, '') + '.jpg', blob);
+            } catch (er) {
+                console.warn('Foto omitida en zip:', nombre, er);
+            }
+        }
+        const blob = await zip.generateAsync({ type: 'blob' });
+        _descargarBlob(blob, nombreZip || 'fotos.zip');
+    } catch (e) {
+        alert('⚠️ Error generando el ZIP: ' + (e && e.message ? e.message : e));
+    }
+};
+
+// Recolecta todas las fotos de una OT (incluye sub-secciones)
+const _fotosDeOT = (d) => {
+    const out = [];
+    Object.entries(_getAreas(d)).forEach(([etapa, a]) => {
+        if (a.tipo === 'simple') {
+            a.fotos.forEach(f => out.push({ etapa, foto: f }));
+        } else {
+            Object.values(a.data).flat().forEach(f => out.push({ etapa, foto: f }));
+        }
+    });
+    return out;
+};
+
+// ── Descargar carperas ───────────────────────────────────────
+window._fotosVistaDescargarOT = async (i) => {
+    const d = window.data[i];
+    if (!d) return;
+    const limpio = (d.empresa || '').replace(/[^\w]+/g, '_');
+    const entradas = _fotosDeOT(d).map(({ etapa, foto }) => ({
+        foto,
+        src: _imgSrc(foto),
+        ruta: `${etapa}/${_nomFoto(foto, 'foto.jpg')}`,
+    }));
+    await window._descargarZipFotos(entradas, `OT_${d.ot}_${limpio || 'fotos'}.zip`);
+};
+
+window._fotosVistaDescargarArea = async (i, etapa) => {
+    const d = window.data[i];
+    if (!d) return;
+    const a = _getAreas(d)[etapa];
+    if (!a) return;
+    let fotos = [];
+    if (a.tipo === 'simple') fotos = a.fotos;
+    else fotos = Object.values(a.data).flat();
+    const limpio = (d.empresa || '').replace(/[^\w]+/g, '_');
+    const entradas = fotos.map(foto => ({
+        foto,
+        src: _imgSrc(foto),
+        ruta: `${etapa}/${_nomFoto(foto, 'foto.jpg')}`,
+    }));
+    await window._descargarZipFotos(entradas, `OT_${d.ot}_${etapa}.zip`);
+};
+
+window._fotosVistaDescargarTodo = async () => {
+    const nombres = new Set();
+    const entradas = [];
+    window.data.forEach((d, i) => {
+        if (_totalFotos(d) === 0) return false;
+        const limpio = (d.empresa || '').replace(/[^\w]+/g, '_').slice(0, 20);
+        const base = `OT_${d.ot}_${limpio || ''}`;
+        _fotosDeOT(d).forEach(({ etapa, foto }) => {
+            let nom = _nomFoto(foto, 'foto.jpg');
+            if (nombres.has(base + '/' + nom)) nom = Date.now() + '_' + nom;
+            nombres.add(base + '/' + nom);
+            entradas.push({ foto, src: _imgSrc(foto), ruta: `${base}/${etapa}/${nom}` });
+        });
+    });
+    await window._descargarZipFotos(entradas, 'Todas_las_fotos.zip');
+};
+
+window._fotosVistaDescargarSeleccion = async () => {
+    const sel = (window._fotosVista && window._fotosVista.sel) || {};
+    const idxs = Object.keys(sel).filter(k => sel[k]).map(Number);
+    if (idxs.length === 0) { alert('Selecciona al menos una OT.'); return; }
+    const nombres = new Set();
+    const entradas = [];
+    for (const i of idxs) {
+        const d = window.data[i];
+        if (!d) continue;
+        const base = `OT_${d.ot}_${(d.empresa || '').replace(/[^\w]+/g, '_').slice(0, 15)}`;
+        _fotosDeOT(d).forEach(({ etapa, foto }) => {
+            let nom = _nomFoto(foto, 'foto.jpg');
+            if (nombres.has(base + '/' + nom)) nom = Date.now() + '_' + nom;
+            nombres.add(base + '/' + nom);
+            entradas.push({ foto, src: _imgSrc(foto), ruta: `${base}/${etapa}/${nom}` });
+        });
+    }
+    await window._descargarZipFotos(entradas, 'Fotos_seleccionadas.zip');
+};
+
+window._fotosVistaToggleSel = () => {
+    const st = window._fotosVista;
+    st.selMode = !st.selMode;
+    if (!st.selMode) st.sel = {};
+    _renderCurrent();
+};
+
+window._fotosVistaSelOT = (i) => {
+    const st = window._fotosVista;
+    if (!st.sel) st.sel = {};
+    st.sel[i] = !st.sel[i];
+    _renderCurrent();
+};
+
+window._fotosVistaCancelSel = () => {
+    const st = window._fotosVista;
+    st.sel = {}; st.selMode = false;
+    _renderCurrent();
+};
+
 // Escanea todas las claves fotos_b64_* de un item de data
 const _getAreas = (d) => {
     const areas = {};
@@ -77,7 +247,7 @@ const _primeraFoto = (d) => {
 };
 
 // ── Estado de navegación ──────────────────────────────────────
-if (!window._fotosVista) window._fotosVista = { q: '', otIdx: null, areaKey: null };
+if (!window._fotosVista) window._fotosVista = { q: '', otIdx: null, areaKey: null, selMode: false, sel: {} };
 
 const _nav = (updates) => {
     Object.assign(window._fotosVista, updates);
@@ -186,6 +356,46 @@ export const inyectarEstilosFotos = () => {
         .fv-empty { text-align:center; padding:40px; color:var(--text2); font-size:0.9em; }
         .fv-empty-icon { font-size:3em; margin-bottom:10px; }
         .fv-sin-fotos { color:#aaa; font-size:0.85em; font-style:italic; padding:10px 0; }
+        .fv-tools { display:flex; gap:8px; flex-wrap:wrap; }
+        .fv-dl-btn {
+            background:#004F88; color:white; border:none; border-radius:8px;
+            padding:8px 14px; font-size:0.82em; font-weight:700; cursor:pointer;
+            transition:background 0.15s;
+        }
+        .fv-dl-btn:hover { background:#003a63; }
+        .fv-dl-btn.fv-dl-activo { background:#16a085; }
+        .fv-dl-cancel { background:#7f8c8d; }
+        .fv-selbar {
+            display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+            background:#e8f6f3; border:1.5px solid #a9dfc7; border-radius:8px;
+            padding:8px 14px; margin-bottom:14px; font-size:0.85em; font-weight:700; color:#0e6655;
+        }
+        .fv-card-selected { box-shadow:0 0 0 2.5px #16a085; transform:translateY(-2px); }
+        .fv-card-sel {
+            position:absolute; top:8px; left:8px; z-index:3;
+            font-size:1.3em; cursor:pointer; line-height:1;
+            background:rgba(255,255,255,0.9); border-radius:6px; padding:2px 4px;
+            box-shadow:0 1px 6px rgba(0,0,0,0.2);
+        }
+        .fv-card-actions {
+            position:absolute; bottom:8px; right:8px; z-index:3;
+            display:flex; gap:6px;
+        }
+        .fv-dl-single {
+            background:rgba(0,0,0,0.65); color:#fff; border:none; border-radius:6px;
+            width:30px; height:30px; font-size:1em; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            transition:background 0.15s;
+        }
+        .fv-dl-single:hover { background:#004F88; }
+        .fv-foto-dl {
+            position:absolute; top:4px; right:4px; z-index:3;
+            background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:5px;
+            width:26px; height:26px; font-size:0.85em; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            transition:background 0.15s;
+        }
+        .fv-foto-dl:hover { background:#004F88; }
         @media(max-width:480px) {
             .fv-grid { grid-template-columns:1fr 1fr; gap:10px; }
             .fv-area-grid { grid-template-columns:1fr 1fr; }
@@ -198,6 +408,9 @@ export const inyectarEstilosFotos = () => {
 // ── NIVEL 1: Grid de OTs ──────────────────────────────────────
 const _htmlOTGrid = () => {
     const q = (window._fotosVista.q || '').toLowerCase().trim();
+    const st = window._fotosVista;
+    const sel = st.sel || {};
+    const nSel = Object.keys(sel).filter(k => sel[k]).length;
 
     const otsFiltradas = window.data
         .map((d, i) => ({ d, i }))
@@ -223,10 +436,17 @@ const _htmlOTGrid = () => {
                 ? `<img class="fv-card-thumb" src="${thumb}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                    <div class="fv-card-thumb-placeholder" style="display:none;">📁</div>`
                 : `<div class="fv-card-thumb-placeholder">📁</div>`;
+            const selBox = st.selMode
+                ? `<div class="fv-card-sel" onclick="event.stopPropagation();window._fotosVistaSelOT(${i})">${sel[i] ? '✅' : '⬜'}</div>`
+                : '';
             return `
-                <div class="fv-card" onclick="window._fotosVistaNav({otIdx:${i},areaKey:null})">
+                <div class="fv-card ${sel[i] ? 'fv-card-selected' : ''}" onclick="event.stopPropagation(); if(window._fotosVista.selMode){window._fotosVistaSelOT(${i})}else{window._fotosVistaNav({otIdx:${i},areaKey:null})}">
+                    ${selBox}
                     ${thumbHtml}
                     <div class="fv-card-count">📷 ${total}</div>
+                    <div class="fv-card-actions">
+                        <button class="fv-dl-single" title="Descargar carpeta OT ${d.ot}" onclick="event.stopPropagation();window._fotosVistaDescargarOT(${i})">⬇</button>
+                    </div>
                     <div class="fv-card-body">
                         <div class="fv-card-ot">OT ${d.ot}</div>
                         <div class="fv-card-emp">${d.empresa || '—'}</div>
@@ -237,6 +457,13 @@ const _htmlOTGrid = () => {
                 </div>`;
         }).join('');
 
+    const selBar = st.selMode ? `
+        <div class="fv-selbar">
+            <span>${nSel} OT${nSel !== 1 ? 's' : ''} seleccionada${nSel !== 1 ? 's' : ''}</span>
+            ${nSel > 0 ? `<button class="fv-dl-btn" onclick="window._fotosVistaDescargarSeleccion()">⬇ Descargar selección (.zip)</button>` : ''}
+            <button class="fv-dl-btn fv-dl-cancel" onclick="window._fotosVistaCancelSel()">✕ Cancelar selección</button>
+        </div>` : '';
+
     return `
         <div class="fv-wrap">
             <div class="fv-header">
@@ -244,7 +471,12 @@ const _htmlOTGrid = () => {
                     <div class="fv-titulo">🖼 Galería de Fotos</div>
                     <div class="fv-subtitulo">${otsFiltradas.length} OT${otsFiltradas.length !== 1 ? 's' : ''} con fotos</div>
                 </div>
+                <div class="fv-tools">
+                    <button class="fv-dl-btn" onclick="window._fotosVistaDescargarTodo()">⬇ Descargar todo (.zip)</button>
+                    <button class="fv-dl-btn ${st.selMode ? 'fv-dl-activo' : ''}" onclick="window._fotosVistaToggleSel()">${st.selMode ? '☑ Seleccionando...' : '☑ Seleccionar OTs'}</button>
+                </div>
             </div>
+            ${selBar}
             <input class="fv-search" type="text" placeholder="🔍 Buscar por N° OT o empresa..."
                 value="${window._fotosVista.q || ''}"
                 oninput="window._fotosVistaBuscar(this.value)">
@@ -301,6 +533,7 @@ const _htmlAreaGrid = () => {
                     <div class="fv-titulo">OT ${d.ot}</div>
                     <div class="fv-subtitulo">${d.empresa || ''} · ${Object.keys(areas).length} área${Object.keys(areas).length !== 1 ? 's' : ''} con fotos</div>
                 </div>
+                <button class="fv-dl-btn" onclick="window._fotosVistaDescargarOT(${window._fotosVista.otIdx})">⬇ Descargar OT (.zip)</button>
             </div>
             <div class="fv-area-grid">${cards}${sinAreas}</div>
         </div>`;
@@ -327,6 +560,8 @@ const _htmlFotoGrid = () => {
                      onerror="this.src='${src}'"
                      onclick="window._fotosVistaVerFoto('${src}')"
                      title="Click para ver completa">
+                <button class="fv-foto-dl" title="Descargar foto"
+                    onclick="event.stopPropagation();window._fotosVistaDescargarFoto('${src}','${_nomFoto(f, 'foto_' + fi + '.jpg')}')">⬇</button>
                 ${f.usuario ? `<div class="fv-foto-usuario">👤 ${f.usuario}</div>` : ''}
             </div>`;
     };
@@ -370,6 +605,7 @@ const _htmlFotoGrid = () => {
                     <div class="fv-titulo" style="color:${info.color};">${info.label}</div>
                     <div class="fv-subtitulo">OT ${d.ot} — ${d.empresa || ''} · 📷 ${totalFotos} foto${totalFotos !== 1 ? 's' : ''}</div>
                 </div>
+                <button class="fv-dl-btn" onclick="window._fotosVistaDescargarArea(${i},'${etapa}')">⬇ Descargar área (.zip)</button>
             </div>
             ${contenido}
         </div>`;
