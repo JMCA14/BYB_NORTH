@@ -177,23 +177,6 @@ window.actualizarInfoUsuario = () => {
         btnNuevaOT.remove();
     }
 
-    // ── Botón Herramientas (calculadora, visible para todos) ──
-    let btnHerra = document.getElementById('menuHerramientas');
-    if (!btnHerra) {
-        const nav = el.closest('nav') || el.parentElement;
-        if (nav) {
-            btnHerra = document.createElement('button');
-            btnHerra.id = 'menuHerramientas';
-            btnHerra.className = 'nav-btn';
-            btnHerra.onclick = () => { if (window.abrirCalculadora) window.abrirCalculadora(); };
-            btnHerra.style.cssText = 'display:flex;width:100%;text-align:left;padding:10px 16px;border:none;background:rgba(142,68,173,0.22);color:#d7a1ff;cursor:pointer;font-weight:700;font-size:0.88em;border-radius:6px;margin:4px 0;transition:background 0.2s;';
-            btnHerra.onmouseover = () => btnHerra.style.background = 'rgba(142,68,173,0.38)';
-            btnHerra.onmouseout  = () => btnHerra.style.background = 'rgba(142,68,173,0.22)';
-            btnHerra.innerHTML = '🧮 Herramientas';
-            nav.appendChild(btnHerra);
-        }
-    }
-
     // ── Botón Chat (visible para todos con sesión) ──
     let btnChat = document.getElementById('menuChat');
     if (!btnChat) {
