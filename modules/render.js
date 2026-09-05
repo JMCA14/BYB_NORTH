@@ -602,6 +602,12 @@ window.render = () => {
     }
     else {
         let html = `<div class="card"><h2>${window.vistaActual.replace(/_/g,' ').toUpperCase()}</h2></div>`;
+        // Herramientas de bobinado bajo el encabezado (siempre visibles en la vista Bobinado)
+        if (window.vistaActual === 'bobinado') {
+            html += `<div style="margin:-6px 0 14px;text-align:center;">
+                <button class="btn-finish" style="background:#8e44ad;border:none;margin:0;" onclick="window.abrirCalculadora()">🧮 Herramientas de Bobinado (Calculadora)</button>
+            </div>`;
+        }
         let hay = false;
         // Mapeo: vistaActual → areaId para filtrar OTs por usuario autorizado
         const _vistasConFiltroArea = {
