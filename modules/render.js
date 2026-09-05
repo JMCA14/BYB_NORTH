@@ -608,6 +608,12 @@ window.render = () => {
                 <button class="btn-finish" style="background:#8e44ad;border:none;margin:0;" onclick="window.abrirCalculadora()">🧮 Herramientas de Bobinado (Calculadora)</button>
             </div>`;
         }
+        // Herramientas de mecánica bajo el encabezado (siempre visibles en la vista Mecánica)
+        if (window.vistaActual === 'mecanica') {
+            html += `<div style="margin:-6px 0 14px;text-align:center;">
+                <button class="btn-finish" style="background:#16a085;border:none;margin:0;" onclick="window.abrirEjes()">⚙️ Plano de Ejes (Mecánica)</button>
+            </div>`;
+        }
         let hay = false;
         // Mapeo: vistaActual → areaId para filtrar OTs por usuario autorizado
         const _vistasConFiltroArea = {
