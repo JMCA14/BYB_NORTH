@@ -318,8 +318,6 @@ window.render = () => {
         ).join('');
 
         let filtrados = window.data.filter(d => d.fecha && d.fecha.slice(0,7) === mesSel);
-        const st2 = (req, hecho) => (req === 'si') ? (hecho ? '<td style="color:var(--success-dark);text-align:center">✔</td>' : '<td style="color:var(--danger);text-align:center">✘</td>') : '<td style="text-align:center;color:var(--text-light)">—</td>';
-        const ck2 = (paso, d) => (d.pasos && d.pasos[paso]) ? '<td style="color:var(--success-dark);text-align:center">✔</td>' : '<td style="text-align:center;color:var(--text-light)">—</td>';
         const rod2 = (d2) => {
             const rods2 = d2.rodamientos || [];
             // Compatibilidad legacy
@@ -337,9 +335,57 @@ window.render = () => {
         };
         const fmtF = (f) => { if(!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
 
-        const filas = filtrados.map(d =>
-            `<tr><td><b style="color:var(--accent)">${d.ot}</b></td><td>${d.empresa}</td><td style="font-size:0.85em;white-space:nowrap">${fmtF(d.fecha)}</td>${rod2(d)}${st2(d.enc_lc,d.ejec_enc_lc)}${st2(d.enc_ll,d.ejec_enc_ll)}${st2(d.met_lc,d.ejec_met_lc)}${st2(d.met_ll,d.ejec_met_ll)}${ck2('mant_ok',d)}<td><span class="badge badge-blue" style="font-size:0.7em">${d.estado.replace(/_/g,' ').toUpperCase()}</span></td></tr>`
-        ).join('');
+        // ── Celdas de la tabla mensual ampliada ──
+        const ORDEN_FLUJO = ['espera_fecha','desarme','ingresos_pendientes','detalle_pendiente','ejecucion_trabajos','pruebas_dinamicas','terminaciones','check_salida','despacho','entregado'];
+        const _faseAlcanzada = (d, etapa) => ORDEN_FLUJO.indexOf(d.estado) >= ORDEN_FLUJO.indexOf(etapa);
+        // celda de etapa: ✔ hecho / 🔄 en curso / ◌ avanzado sin terminar / — no le corresponde aún
+        const _cellFase = (d, paso, etapaEstado, etapa) => {
+            const ok = !!(d.pasos && d.pasos[paso]);
+            if (ok) return '<td style="color:var(--success-dark);text-align:center;font-weight:700;">✔</td>';
+            if (etapaEstado && d.estado === etapaEstado) return '<td style="color:#e67e22;text-align:center;font-weight:700;">🔄 En curso</td>';
+            if (_faseAlcanzada(d, etapa)) return '<td style="text-align:center;color:#aaa;">◌</td>';
+            return '<td style="text-align:center;color:var(--text-light);">—</td>';
+        };
+        const _cellFinal = (d) => {
+            if (d.estado === 'entregado' || (d.pasos && d.pasos.salida_ok))
+                return '<td style="color:var(--success-dark);text-align:center;font-weight:700;">✔ Listo</td>';
+            if (d.estado === 'despacho') return '<td style="color:#16a085;text-align:center;font-weight:700;">🚚 Listo</td>';
+            if (d.estado === 'check_salida') return '<td style="color:#e67e22;text-align:center;font-weight:700;">🔄 En curso</td>';
+            if (_faseAlcanzada(d, 'check_salida')) return '<td style="text-align:center;color:#aaa;">◌</td>';
+            return '<td style="text-align:center;color:var(--text-light);">—</td>';
+        };
+        const _cellTipo = (d) => {
+            if (d.tipoTrabajo === 'bobinado') return '<td style="text-align:center;"><span class="badge" style="background:#8e44ad;color:#fff;font-size:0.66em;">⚡ BOBINADO</span></td>';
+            if (d.tipoTrabajo === 'mantencion') return '<td style="text-align:center;"><span class="badge" style="background:#27ae60;color:#fff;font-size:0.66em;">🛠️ MANTENCIÓN</span></td>';
+            return '<td style="text-align:center;color:var(--text-light);">—</td>';
+        };
+        const MEC_CORTO = {
+            encam_aloj_lc:'🔧 Encam. LC',      encam_aloj_ll:'🔧 Encam. LL',
+            encam_asen_lc:'🔧 Encam. A-LC',    encam_asen_ll:'🔧 Encam. A-LL',
+            rect_aloj_lc:'🗜️ Rectif. LC',      rect_aloj_ll:'🗜️ Rectif. LL',
+            rect_asen_lc:'🗜️ Rectif. A-LC',    rect_asen_ll:'🗜️ Rectif. A-LL',
+            rect_eje_lc:'🗜️ Rectif. Eje LC',   rect_eje_ll:'🗜️ Rectif. Eje LL',
+            revisar_aloj_lc:'🔍 Rev. LC',       revisar_aloj_ll:'🔍 Rev. LL',
+            revisar_asen_lc:'🔍 Rev. A-LC',     revisar_asen_ll:'🔍 Rev. A-LL',
+            revisar_eje_lc:'🔍 Rev. Eje LC',    revisar_eje_ll:'🔍 Rev. Eje LL',
+            metal_eje_lc:'🖌️ Metal. Eje LC',    metal_eje_ll:'🖌️ Metal. Eje LL',
+            encam_lc:'🔧 Encam. LC',            encam_ll:'🔧 Encam. LL',
+            metal_lc:'🖌️ Metal. Eje LC',        metal_ll:'🖌️ Metal. Eje LL',
+            rectif:'🗜️ Rectif. General',        fabric:'🏭 Fab. Pieza',
+        };
+        const _cellMecanica = (d) => {
+            const lista = (window.obtenerTrabajosMetro && window.obtenerTrabajosMetro(d)) || [];
+            const real = lista.filter(t => t.k !== 'trab_gral');
+            if (!real.length) return '<td style="text-align:center;color:var(--text-light);">—</td>';
+            const mtu = d.mec_trab_usuario || {};
+            return '<td style="padding:4px;white-space:nowrap;">' + real.map(t => {
+                const corto = MEC_CORTO[t.k] || t.label.replace(/\s*\((Drive End|Non Drive End)\)/,'').replace(/Lado Carga/,'LC').replace(/Lado Libre/,'LL');
+                const tj = mtu[t.k];
+                const stl = tj && tj.ok ? 'color:#27ae60;' : tj ? 'color:#e67e22;' : 'color:#5a6a8a;';
+                const mark = tj && tj.ok ? ' ✔' : tj ? ' ⏳' : '';
+                return `<span style="font-size:0.68em;display:block;${stl}">${corto}${mark}</span>`;
+            }).join('') + '</td>';
+        };
 
         // Calcular stats del mes
         const totalMes = filtrados.length;
@@ -365,8 +411,13 @@ window.render = () => {
                 <td style="font-size:0.85em;white-space:nowrap">${fmtF(d.fecha)}</td>
                 <td>${window.barraAvance(pct2)}</td>
                 ${rod2(d)}
-                ${st2(d.enc_lc,d.ejec_enc_lc)}${st2(d.enc_ll,d.ejec_enc_ll)}
-                ${ck2('mant_ok',d)}
+                ${_cellTipo(d)}
+                ${_cellMecanica(d)}
+                ${_cellFase(d,'bal_ok',null,'ejecucion_trabajos')}
+                ${_cellFase(d,'armado_ok',null,'ejecucion_trabajos')}
+                ${_cellFase(d,'pruebas_ok','pruebas_dinamicas','pruebas_dinamicas')}
+                ${_cellFase(d,'term_ok','terminaciones','terminaciones')}
+                ${_cellFinal(d)}
                 <td><span class="badge badge-blue" style="font-size:0.7em">${d.estado.replace(/_/g,' ').toUpperCase()}</span></td>
             </tr>`;
         }).join('');
@@ -409,9 +460,16 @@ window.render = () => {
             ${grafHtml}
 
             <div style="overflow-x:auto">
-            <table class="tab-tec" style="font-size:0.83em;">
-                <thead><tr><th>OT</th><th>Empresa</th><th>Fecha</th><th style="min-width:130px">Avance</th><th>Rodamientos</th><th>E.LC</th><th>E.LL</th><th>Mant</th><th>Estado</th></tr></thead>
-                <tbody>${filasNuevas || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text2);">Sin OTs para este mes</td></tr>'}</tbody>
+            <table class="tab-tec" style="font-size:0.78em;">
+                <thead><tr>
+                    <th>OT</th><th>Empresa</th><th>Fecha</th>
+                    <th style="min-width:130px">Avance</th><th>Rodamientos</th>
+                    <th>Tipo</th>
+                    <th>Encamisado / Metalado / Otros</th>
+                    <th>Balanceado</th><th>Armado</th>
+                    <th>Pruebas din.</th><th>Terminac.</th><th>Listo</th><th>Estado</th>
+                </tr></thead>
+                <tbody>${filasNuevas || '<tr><td colspan="13" style="text-align:center;padding:20px;color:var(--text2);">Sin OTs para este mes</td></tr>'}</tbody>
             </table></div>
         </div>`;
 
