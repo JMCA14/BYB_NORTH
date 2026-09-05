@@ -4,6 +4,9 @@
 window.renderAreaBobinado = function(i, d, obs, p) {
     let UI = '';
                 UI = `<h3>Bobinado</h3>
+                    <div style="margin-bottom:12px;">
+                        <button class="btn-finish" style="background:#8e44ad;border:none;margin:0;" onclick="window.abrirCalculadora()">🧮 Herramientas de Bobinado (Calculadora)</button>
+                    </div>
                     <div class="card-ot">
                         <h4>📦 Datos de Bobinado</h4>
                         <div class="tab-tec-container">
