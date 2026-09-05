@@ -85,12 +85,26 @@ window._fotosVistaDescargarFoto = async (src, nombre) => {
     }
 };
 
+let _jszipPromise = null;
+const _loadJSZip = () => {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    if (_jszipPromise) return _jszipPromise;
+    _jszipPromise = new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload = () => (window.JSZip ? res(window.JSZip) : rej(new Error('JSZip no se cargó')));
+        s.onerror = () => rej(new Error('No se pudo cargar JSZip'));
+        document.head.appendChild(s);
+    });
+    return _jszipPromise;
+};
+
 // Descarga varias fotos como .zip
 window._descargarZipFotos = async (entradas, nombreZip) => {
     const lista = entradas.filter(e => e && e.src);
     if (lista.length === 0) { alert('No hay fotos para descargar.'); return; }
     try {
-        const JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js')).default || (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'));
+        const JSZip = await _loadJSZip();
         const zip = new JSZip();
         const usadas = new Set();
         for (const e of lista) {
@@ -99,7 +113,7 @@ window._descargarZipFotos = async (entradas, nombreZip) => {
             usadas.add(nombre);
             try {
                 const blob = await _fotoAblob(e.foto);
-                if (blob) zip.file(nombre.replace(/\.[^.]*$/, '') + '.jpg', blob);
+                if (blob) zip.file(nombre, blob);
             } catch (er) {
                 console.warn('Foto omitida en zip:', nombre, er);
             }
